@@ -1,3 +1,25 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* client/src/index.css */
+
+/* ... existing tailwind directives ... */
+
+/* --- ADD THIS TO THE BOTTOM OF index.css --- */
+/* specific classes for Home Page only to avoid breaking Auth */
+
+.orbit-container {
+  animation: spin-right 60s linear infinite;
+}
+
+.counter-rotate {
+  animation: spin-left 60s linear infinite;
+}
+
+@keyframes spin-right {
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes spin-left {
+  100% { transform: rotate(-360deg); }
+}
