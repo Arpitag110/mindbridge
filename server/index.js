@@ -1,22 +1,21 @@
 const express = require("express");
-const mongoose = require("mongoose"); // Import Mongoose
+const mongoose = require("mongoose");
 const dotenv = require("dotenv");
-const app = express();
+const authRoute = require("./routes/auth"); // IMPORT THE ROUTE
 
+const app = express();
 dotenv.config();
 
 app.use(express.json());
 
-// CONNECT TO MONGODB
+// CONNECT DB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("Connected to MongoDB!"))
-  .catch((err) => console.error("MongoDB Connection Failed:", err));
+  .catch((err) => console.error(err));
 
-app.get("/", (req, res) => {
-  res.send("MindBridge Server is Running!");
-});
+// USE ROUTES
+app.use("/api/auth", authRoute); // CONNECT THE ROUTE
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(5000, () => {
+  console.log("Server is running on port 5000");
 });
