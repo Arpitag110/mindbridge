@@ -340,23 +340,38 @@ const MoodPage = () => {
       </div>
 
       {/* SMART WISDOM MODAL (Keep Existing) */}
+      {/* --- 7. SMART WISDOM MODAL (UPDATED) --- */}
       {showWisdom && wisdomMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center animate-bounce-in relative">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center animate-bounce-in relative border border-white/50">
+            
             <h2 className="text-2xl font-bold text-indigo-900 mb-2">{wisdomMessage.title}</h2>
             <p className="text-gray-600 italic text-lg mb-6">"{wisdomMessage.quote}"</p>
             
-            <div className="bg-indigo-50 p-4 rounded-xl mb-6">
+            <div className="bg-indigo-50 p-4 rounded-xl mb-8">
               <span className="text-xs font-bold text-indigo-400 uppercase tracking-wide">Suggested Action</span>
               <p className="text-indigo-800 font-medium">{wisdomMessage.action}</p>
             </div>
 
-            <button 
-              onClick={() => setShowWisdom(false)}
-              className="bg-indigo-600 text-white px-6 py-2 rounded-full hover:bg-indigo-700 transition-colors"
-            >
-              Thanks
-            </button>
+            {/* BUTTONS GROUP */}
+            <div className="flex flex-col gap-3">
+                {/* Primary: Journal */}
+                <button 
+                  onClick={() => navigate("/journal")}
+                  className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-indigo-500/30"
+                >
+                  <span>✍️</span> Want to write about it?
+                </button>
+
+                {/* Secondary: Close */}
+                <button 
+                  onClick={() => setShowWisdom(false)}
+                  className="w-full bg-white border border-gray-200 text-gray-500 font-medium py-3 rounded-xl hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                >
+                  No thanks, I'm good
+                </button>
+            </div>
+
           </div>
         </div>
       )}
