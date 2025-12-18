@@ -5,7 +5,9 @@ import AuthPage from "./AuthPage";
 import HomePage from "./HomePage";
 import MoodPage from "./MoodPage";
 import JournalPage from "./JournalPage";
-import ProfilePage from "./ProfilePage";// 1. Import the new component
+import ProfilePage from "./ProfilePage";
+import CirclesPage from "./CirclesPage";
+import SingleCirclePage from "./SingleCirclePage";// 1. Import the new component
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
         <Route path="/mood" element={<MoodPage />} />
         <Route path="/journal" element={<JournalPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/circles" element={<CirclesPage />} />
+        <Route path="/circles/:id" element={<SingleCirclePage />} />
       </Routes>
     </Router>
   );
