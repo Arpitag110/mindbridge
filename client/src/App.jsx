@@ -4,7 +4,8 @@ import LandingPage from "./LandingPage";
 import AuthPage from "./AuthPage";
 import HomePage from "./HomePage";
 import MoodPage from "./MoodPage";
-import JournalPage from "./JournalPage";// 1. Import the new component
+import JournalPage from "./JournalPage";
+import ProfilePage from "./ProfilePage";// 1. Import the new component
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/home" element={<HomePage />} />
         <Route path="/mood" element={<MoodPage />} />
         <Route path="/journal" element={<JournalPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </Router>
   );

@@ -1,33 +1,53 @@
 const mongoose = require("mongoose");
 
-// This is the Blueprint for a User
 const UserSchema = new mongoose.Schema(
   {
     username: {
       type: String,
-      required: true, // They MUST have a username
-      unique: true,   // No two users can have the same name
+      require: true,
+      min: 3,
+      max: 20,
+      unique: true, // username must be unique
     },
     email: {
       type: String,
       required: true,
+      max: 50,
       unique: true,
     },
     password: {
       type: String,
       required: true,
+      min: 6,
     },
-    // Optional details for the Profile
+    avatar: {
+      type: String,
+      default: "felix",
+    },
     bio: {
       type: String,
       default: "",
+      max: 500, // Good practice to limit bio length
     },
-    profilePic: {
+    mantra: {
       type: String,
-      default: "", // We will add image uploading later
+      default: "One day at a time",
     },
+    // 👇 ADD THESE NEW FIELDS 👇
+    interests: {
+      type: Array,
+      default: [],
+    },
+    ghostMode: {
+      type: Boolean,
+      default: false,
+    },
+    stats: {
+      moodCount: { type: Number, default: 0 },
+      journalCount: { type: Number, default: 0 }
+    }
   },
-  { timestamps: true } // Automatically saves 'createdAt' and 'updatedAt' times
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("User", UserSchema);
