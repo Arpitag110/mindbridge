@@ -7,11 +7,11 @@ const MoodSchema = new mongoose.Schema(
       required: true,
     },
     score: {
-      type: Number, // 1 to 5
+      type: Number,
       required: true,
     },
     emotions: {
-      type: Array, // e.g., ["Anxious", "Work"]
+      type: Array,
       default: [],
     },
     note: {
@@ -19,10 +19,16 @@ const MoodSchema = new mongoose.Schema(
       max: 500,
     },
     color: {
-      type: String, // We'll save the background color too for fun visualizations later
-    }
+      type: String,
+    },
+    // NEW FIELD
+    visibility: {
+      type: String,
+      enum: ["Private", "Circles", "Public"], // Only these 3 allowed
+      default: "Private",
+    },
   },
-  { timestamps: true } // Automatically adds 'createdAt' and 'updatedAt'
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Mood", MoodSchema);

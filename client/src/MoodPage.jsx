@@ -10,8 +10,12 @@ const MoodPage = () => {
   const [moodScore, setMoodScore] = useState(3);
   const [selectedTags, setSelectedTags] = useState([]);
   const [note, setNote] = useState("");
+  const [visibility, setVisibility] = useState("Private"); // New State
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Logic State
+  const [isEditingToday, setIsEditingToday] = useState(false); // Tracks if we are editing today's entry
+
   // Data States
   const [history, setHistory] = useState([]);
   
@@ -29,6 +33,9 @@ const MoodPage = () => {
   ];
 
   const tagsList = ["Work", "Family", "Relationship", "Sleep", "Health", "Finance", "Social", "Weather", "Hobbies", "Self-Care"];
+  const visibilityOptions = ["Private", "Circles", "Public"];
+
+  const currentMood = moodOptions.find((m) => m.score === moodScore) || moodOptions[2];
 
   // Smart Wisdom Data
   const wisdomQuotes = {
@@ -39,13 +46,36 @@ const MoodPage = () => {
     5: { title: "That's the spirit!", quote: "Savor this feeling. You deserve it.", action: "Write down exactly why you feel this way to remember it." },
   };
 
-  const currentMood = moodOptions.find((m) => m.score === moodScore) || moodOptions[2];
+  // --- HELPER: CHECK IF DATE IS TODAY ---
+  const isToday = (dateString) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
 
-  // --- FETCH HISTORY ---
+  // --- FETCH HISTORY & CHECK TODAY ---
   const fetchHistory = useCallback(async (userId) => {
     try {
       const res = await axios.get(`http://localhost:5000/api/mood/${userId}`);
       setHistory(res.data);
+
+      // Check if the most recent entry is from TODAY
+      if (res.data.length > 0 && isToday(res.data[0].createdAt)) {
+        const todayEntry = res.data[0];
+        // Pre-fill form
+        setMoodScore(todayEntry.score);
+        setSelectedTags(todayEntry.emotions);
+        setNote(todayEntry.note || "");
+        setVisibility(todayEntry.visibility || "Private");
+        setIsEditingToday(true);
+      } else {
+        setIsEditingToday(false);
+      }
+
     } catch (err) {
       console.error("Failed to fetch history", err);
     }
@@ -83,17 +113,15 @@ const MoodPage = () => {
         emotions: selectedTags,
         note: note,
         color: currentMood.bgGradient,
+        visibility: visibility, // Send Visibility
       });
 
       await fetchHistory(user._id || user.id);
       
-      // Trigger Wisdom Modal
+      // Only show wisdom if creating new, or if updating to a different mood score? 
+      // Let's show it always for positive reinforcement.
       setWisdomMessage(wisdomQuotes[moodScore]);
       setShowWisdom(true);
-
-      // Reset Form
-      setNote("");
-      setSelectedTags([]);
       
     } catch (err) {
       console.error("Error saving mood:", err);
@@ -107,13 +135,22 @@ const MoodPage = () => {
     if(!window.confirm("Are you sure you want to delete this entry?")) return;
     try {
       await axios.delete(`http://localhost:5000/api/mood/delete/${moodId}`);
+      // If we deleted today's entry, reset form
+      const deletedWasToday = history.find(h => h._id === moodId && isToday(h.createdAt));
+      if(deletedWasToday) {
+          setIsEditingToday(false);
+          setMoodScore(3);
+          setNote("");
+          setSelectedTags([]);
+          setVisibility("Private");
+      }
       fetchHistory(user._id || user.id);
     } catch (err) {
       console.error("Error deleting mood", err);
     }
   };
 
-  // --- HEATMAP HELPER ---
+  // --- HEATMAP HELPERS ---
   const getLast7Days = () => {
     const days = [];
     for (let i = 6; i >= 0; i--) {
@@ -125,16 +162,13 @@ const MoodPage = () => {
   };
 
   const getMoodColorForDate = (date) => {
-    // Check if we have an entry for this date (YYYY-MM-DD comparison)
     const dateStr = date.toISOString().split('T')[0];
     const entry = history.find(h => h.createdAt.startsWith(dateStr));
-    
     if (entry) {
-        // Return the color class based on the score
         const m = moodOptions.find(opt => opt.score === entry.score);
-        return m.activeColor.split(' ')[0]; // Extract just the bg-color class
+        return m.activeColor.split(' ')[0];
     }
-    return "bg-white/30"; // Default gray if no entry
+    return "bg-white/30";
   };
 
   return (
@@ -153,7 +187,7 @@ const MoodPage = () => {
       {/* Main Glass Card */}
       <div className="bg-white/60 backdrop-blur-xl w-full max-w-2xl rounded-[2rem] shadow-2xl p-6 md:p-10 border border-white/50 transition-all duration-500 mb-10 relative">
         
-        {/* --- 1. HEATMAP (Last 7 Days) --- */}
+        {/* HEATMAP */}
         <div className="absolute top-6 right-6 hidden sm:flex gap-1">
              {getLast7Days().map((date, idx) => (
                  <div key={idx} className="flex flex-col items-center gap-1">
@@ -165,11 +199,19 @@ const MoodPage = () => {
              ))}
         </div>
 
+        {/* HEADER: Dynamic Text based on whether we are Editing or New */}
         <div className="text-center mb-8 mt-2">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">How are you feeling?</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            {isEditingToday ? "Update your check-in" : "How are you feeling?"}
+          </h1>
+          {isEditingToday && (
+              <p className="text-sm text-indigo-600 font-medium bg-indigo-50 inline-block px-3 py-1 rounded-full">
+                  You've already checked in today. Changes here will update your entry.
+              </p>
+          )}
         </div>
 
-        {/* --- 2. MOOD SELECTOR --- */}
+        {/* 1. MOOD SELECTOR */}
         <div className="flex justify-between items-center mb-6 px-2">
           {moodOptions.map((option) => (
             <div key={option.score} className="flex flex-col items-center gap-2">
@@ -190,11 +232,11 @@ const MoodPage = () => {
           ))}
         </div>
         
-        <div className="text-center font-bold text-xl text-gray-800 mb-8 uppercase tracking-widest opacity-80">
+        <div className="text-center font-bold text-xl text-gray-800 mb-6 uppercase tracking-widest opacity-80">
            {currentMood.label}
         </div>
 
-        {/* --- 3. TAGS --- */}
+        {/* 2. TAGS */}
         <div className="mb-6">
           <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">What's affecting you?</p>
           <div className="flex flex-wrap gap-2">
@@ -216,8 +258,8 @@ const MoodPage = () => {
           </div>
         </div>
 
-        {/* --- 4. NOTE --- */}
-        <div className="mb-8">
+        {/* 3. NOTE */}
+        <div className="mb-6">
            <textarea
             placeholder="Add a note..."
             className="w-full bg-white/50 border border-gray-200 rounded-xl p-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white transition-all resize-none h-24"
@@ -226,19 +268,39 @@ const MoodPage = () => {
           ></textarea>
         </div>
 
-        {/* --- 5. SAVE BUTTON --- */}
+        {/* 4. VISIBILITY SETTINGS */}
+        <div className="mb-8">
+            <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">Visibility</p>
+            <div className="flex bg-white/50 rounded-xl p-1 border border-gray-200">
+                {visibilityOptions.map((option) => (
+                    <button
+                        key={option}
+                        onClick={() => setVisibility(option)}
+                        className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                            visibility === option 
+                            ? "bg-white text-indigo-600 shadow-sm" 
+                            : "text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                        {option}
+                    </button>
+                ))}
+            </div>
+        </div>
+
+        {/* 5. SAVE BUTTON */}
         <button
           onClick={handleSave}
           disabled={isSubmitting}
           className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg py-3 rounded-xl shadow-lg transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-50"
         >
-          {isSubmitting ? "Saving..." : "Log Mood"}
+          {isSubmitting ? "Saving..." : isEditingToday ? "Update Entry" : "Log Mood"}
         </button>
 
-        {/* --- 6. HISTORY WITH DELETE --- */}
+        {/* 6. HISTORY WITH VISIBILITY INDICATOR */}
         {history.length > 0 && (
             <div className="mt-12 border-t border-gray-200/50 pt-6">
-                <h3 className="text-gray-500 font-bold uppercase text-xs tracking-wider mb-4">Recent Entries</h3>
+                <h3 className="text-gray-500 font-bold uppercase text-xs tracking-wider mb-4">Past Entries</h3>
                 <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                     {history.map((entry) => {
                         const moodData = moodOptions.find(m => m.score === entry.score);
@@ -251,11 +313,16 @@ const MoodPage = () => {
                                             {moodData?.label} 
                                             {entry.emotions.length > 0 && <span className="text-gray-500 font-normal"> • {entry.emotions.join(", ")}</span>}
                                         </p>
-                                        <p className="text-xs text-gray-500">{new Date(entry.createdAt).toLocaleString()}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <p className="text-xs text-gray-500">{new Date(entry.createdAt).toLocaleDateString()}</p>
+                                            {/* Visibility Badge */}
+                                            <span className="text-[10px] uppercase bg-gray-200/50 text-gray-500 px-2 rounded-md">
+                                                {entry.visibility || "Private"}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 
-                                {/* Delete Button (Only shows on hover) */}
                                 <button 
                                   onClick={() => handleDelete(entry._id)}
                                   className="text-red-300 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -272,7 +339,7 @@ const MoodPage = () => {
 
       </div>
 
-      {/* --- 7. SMART WISDOM MODAL --- */}
+      {/* SMART WISDOM MODAL (Keep Existing) */}
       {showWisdom && wisdomMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center animate-bounce-in relative">
