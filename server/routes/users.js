@@ -4,7 +4,29 @@ const Mood = require("../models/Mood");
 const Journal = require("../models/Journal");
 const bcrypt = require("bcryptjs");
 
-// --- GET USER & STATS ---
+// ==============================
+// 1. SEARCH USERS (ADD THIS NEW ROUTE HERE)
+// ==============================
+router.get("/", async (req, res) => {
+  const query = req.query.search;
+  
+  // Prevent searching if query is empty or undefined
+  if (!query) return res.status(200).json([]);
+
+  try {
+    const users = await User.find({
+      username: { $regex: query, $options: "i" }, // Case-insensitive search
+    }).select("username _id avatar"); // Only return what we need
+    
+    res.status(200).json(users);
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
+
+// ==============================
+// 2. GET USER & STATS (Existing)
+// ==============================
 router.get("/:id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -25,12 +47,9 @@ router.get("/:id", async (req, res) => {
 });
 
 // --- UPDATE USER ---
-// ⚠️ CHANGED: Removed "/update" to match frontend path
 router.put("/:id", async (req, res) => {
-  // ⚠️ CHANGED: Relaxed check because frontend doesn't always send userId in body
+  // ... (Keep your existing update logic here) ...
   if (req.params.id) {
-    
-    // If updating password, hash it again
     if (req.body.password) {
       try {
         const salt = await bcrypt.genSalt(10);
@@ -41,8 +60,6 @@ router.put("/:id", async (req, res) => {
     }
 
     try {
-      // Update the user
-      // We explicitly map fields to ensure specific items like interests/ghostMode are saved
       const user = await User.findByIdAndUpdate(req.params.id, {
         $set: {
            username: req.body.username,
@@ -50,19 +67,12 @@ router.put("/:id", async (req, res) => {
            bio: req.body.bio,
            avatar: req.body.avatar,
            mantra: req.body.mantra,
-           interests: req.body.interests, // Important: Save the array
+           interests: req.body.interests,
            ghostMode: req.body.ghostMode,
-           // If password is in body, it's already hashed above, but usually we handle password separately. 
-           // For now, if you send it, this line catches it if you use req.body spread, 
-           // but explicit is safer:
            ...(req.body.password && { password: req.body.password }) 
         }
-      }, { new: true }); // Returns the NEW updated object
+      }, { new: true });
 
-      // ⚠️ CRITICAL FIX: Return the full user object, NOT a string.
-      // The frontend needs this object to update the UI immediately.
-      
-      // Re-fetch stats to include them in the return (optional but good for UI consistency)
       const moodCount = await Mood.countDocuments({ userId: req.params.id });
       const journalCount = await Journal.countDocuments({ userId: req.params.id });
       
@@ -70,7 +80,7 @@ router.put("/:id", async (req, res) => {
       res.status(200).json({ ...other, stats: { moodCount, journalCount } });
 
     } catch (err) {
-      console.log(err); // Log error to console for debugging
+      console.log(err);
       return res.status(500).json(err);
     }
   } else {
@@ -79,17 +89,13 @@ router.put("/:id", async (req, res) => {
 });
 
 // --- DELETE USER ---
-// ⚠️ CHANGED: Removed "/delete" to match REST standards
 router.delete("/:id", async (req, res) => {
-  // Relaxed check to trust the param ID for now
+  // ... (Keep your existing delete logic here) ...
   if (req.params.id) {
     try {
       await User.findByIdAndDelete(req.params.id);
-      
-      // Cleanup associated data
       await Mood.deleteMany({ userId: req.params.id });
       await Journal.deleteMany({ userId: req.params.id });
-      
       res.status(200).json("Account has been deleted");
     } catch (err) {
       return res.status(500).json(err);
