@@ -3,6 +3,7 @@ const cors = require("cors"); // 1. Ensure this import is here
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const authRoute = require("./routes/auth");
+const moodRoute = require("./routes/mood");
 
 dotenv.config();
 connectDB();
@@ -14,7 +15,8 @@ app.use(cors()); // 2. THIS LINE MUST BE HERE (Allows the frontend to connect)
 app.use(express.json());
 
 // --- ROUTES SECTION ---
-app.use("/api/auth", authRoute); // 3. This must be AFTER cors()
+app.use("/api/auth", authRoute);
+app.use("/api/mood", moodRoute);
 
 const PORT = process.env.PORT || 5000;
 

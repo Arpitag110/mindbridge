@@ -30,27 +30,32 @@ const HomePage = () => {
     navigate("/auth");
   };
 
-  // --- UPDATED DESCRIPTIONS ---
+  // --- NAVIGATION ITEMS ---
   const navItems = [
     { 
       title: "Profile", 
-      desc: "Manage your personal account settings, privacy preferences, and user details." 
+      desc: "Manage your personal account settings, privacy preferences, and user details.",
+      path: "/profile" 
     },
     { 
       title: "Dashboard", 
-      desc: "Visualize your progress with weekly insights, charts, and mental health stats." 
+      desc: "Visualize your progress with weekly insights, charts, and mental health stats.",
+      path: "/dashboard" 
     },
     { 
       title: "Circles", 
-      desc: "Join community support groups to share experiences and connect with peers safely." 
+      desc: "Join community support groups to share experiences and connect with peers safely.",
+      path: "/circles" 
     },
     { 
       title: "Journal", 
-      desc: "A private space to write down your thoughts, reflections, and daily gratitude." 
+      desc: "A private space to write down your thoughts, reflections, and daily gratitude.",
+      path: "/journal" 
     },
     { 
       title: "Mood", 
-      desc: "Track your emotional well-being over time to identify patterns and triggers." 
+      desc: "Track your emotional well-being over time to identify patterns and triggers.",
+      path: "/mood" 
     },
   ];
 
@@ -94,22 +99,21 @@ const HomePage = () => {
             return (
               <div
                 key={index}
-                className="absolute flex items-center justify-center"
+                className="absolute flex items-center justify-center pointer-events-auto"
                 style={{
                   transform: `translate(${x}px, ${y}px)`,
                 }}
               >
                 {/* LAYER 1: COUNTER-ROTATION 
                   This div spins backwards to keep the content upright.
-                  It ignores hover effects to avoid conflict.
                 */}
-                <div className="counter-rotate pointer-events-auto">
+                <div className="counter-rotate">
                   
                   {/* LAYER 2: HOVER & STYLING 
-                    This div handles the hover scale and looks.
-                    Because it is inside the counter-rotator, it stays upright!
+                    This handles the click, hover scale, and appearance.
                   */}
                   <div 
+                    onClick={() => navigate(item.path)} // <--- NAVIGATION HAPPENS HERE
                     className="w-36 h-36 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform duration-300 hover:scale-110"
                     onMouseEnter={() => setCenterInfo(item)}
                     onMouseLeave={() => setCenterInfo(defaultCenter)}
