@@ -6,6 +6,9 @@ const authRoute = require("./routes/auth");
 const moodRoute = require("./routes/mood");
 const journalRoute = require("./routes/journal");
 const userRoute = require("./routes/users");
+const circleRoute = require("./routes/circles");
+const postRoute = require("./routes/posts");
+const questionRoute = require("./routes/questions");
 
 dotenv.config();
 connectDB();
@@ -21,6 +24,9 @@ app.use("/api/auth", authRoute);
 app.use("/api/mood", moodRoute);
 app.use("/api/journal", journalRoute);
 app.use("/api/users", userRoute);
+app.use("/api/circles", circleRoute);
+app.use("/api/posts", postRoute);
+app.use("/api/questions", questionRoute);
 
 const PORT = process.env.PORT || 5000;
 
