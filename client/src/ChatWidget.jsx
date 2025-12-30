@@ -8,6 +8,10 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose, onMessageSent })
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef();
 
+  // Profile modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileEntries, setProfileEntries] = useState({ moods: [], journals: [] });
+
   // 1. Load Chat History on Open
   useEffect(() => {
     const getMessages = async () => {
@@ -127,9 +131,18 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose, onMessageSent })
             <span className="text-xs text-indigo-200 block">Online</span>
           </div>
         </div>
-        <button onClick={onClose} className="hover:bg-indigo-500 p-1 rounded-full transition">
-          <X size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={async () => {
+            try {
+              const res = await axios.get(`http://localhost:5000/api/users/${targetUser._id}/visible-entries?viewerId=${currentUser._id}`);
+              setProfileEntries(res.data);
+              setShowProfileModal(true);
+            } catch (err) { console.error('Failed to load profile entries', err); alert('Failed to load entries'); }
+          }} className="bg-indigo-500 hover:bg-indigo-400 px-3 py-1 rounded text-white text-xs">View</button>
+          <button onClick={onClose} className="hover:bg-indigo-500 p-1 rounded-full transition">
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
       {/* MESSAGES AREA */}
@@ -153,8 +166,8 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose, onMessageSent })
               <div key={index} ref={scrollRef} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm ${isMe
-                      ? "bg-indigo-600 text-white rounded-br-none"
-                      : "bg-white text-gray-800 border border-gray-100 rounded-bl-none"
+                    ? "bg-indigo-600 text-white rounded-br-none"
+                    : "bg-white text-gray-800 border border-gray-100 rounded-bl-none"
                     }`}
                 >
                   {m.text}
@@ -182,6 +195,41 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose, onMessageSent })
           <Send size={18} />
         </button>
       </form>
+
+      {/* Profile Entries Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-auto max-h-[80vh]">
+            <div className="p-4 border-b flex justify-between items-center">
+              <div className="flex items-center gap-3"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${targetUser.username}`} className="w-10 h-10 rounded-full" /><div><div className="font-bold">{targetUser.username}</div><div className="text-xs text-gray-500">Profile</div></div></div>
+              <button onClick={() => setShowProfileModal(false)} className="text-gray-500">Close</button>
+            </div>
+            <div className="p-4 space-y-4">
+              <h3 className="font-bold">Recent Moods</h3>
+              {profileEntries.moods.length === 0 ? <div className="text-sm text-gray-400">No visible moods</div> : (
+                profileEntries.moods.map(m => (
+                  <div key={m._id} className="p-3 bg-gray-50 rounded-lg border">
+                    <div className="text-sm font-bold">Mood: {m.score}</div>
+                    {m.note && <div className="text-xs text-gray-600 mt-1">{m.note}</div>}
+                    <div className="text-xs text-gray-400 mt-2">{new Date(m.createdAt).toLocaleString()}</div>
+                  </div>
+                ))
+              )}
+
+              <h3 className="font-bold">Recent Journals</h3>
+              {profileEntries.journals.length === 0 ? <div className="text-sm text-gray-400">No visible journals</div> : (
+                profileEntries.journals.map(j => (
+                  <div key={j._id} className="p-3 bg-gray-50 rounded-lg border">
+                    <div className="font-bold">{j.title}</div>
+                    <div className="text-xs text-gray-600 mt-1">{j.content.slice(0, 200)}{j.content.length > 200 ? '...' : ''}</div>
+                    <div className="text-xs text-gray-400 mt-2">{new Date(j.createdAt).toLocaleString()}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
