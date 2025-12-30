@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Send, Loader } from "lucide-react";
 import axios from "axios";
 
-const ChatWidget = ({ socket, currentUser, targetUser, onClose }) => {
+const ChatWidget = ({ socket, currentUser, targetUser, onClose, onMessageSent }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -15,31 +15,44 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose }) => {
         const res = await axios.get(
           `http://localhost:5000/api/messages/${currentUser._id}/${targetUser._id}`
         );
+        console.log("Fetched messages:", res.data);
         setMessages(res.data);
         setLoading(false);
+        try {
+          // Mark messages as read for this conversation (messages sent to current user)
+          await axios.put(`http://localhost:5000/api/messages/mark-read-conversation/${currentUser._id}/${targetUser._id}`);
+          // Ask parent to refresh recent chats
+          if (onMessageSent) onMessageSent();
+        } catch (err) {
+          // non-fatal
+          console.error('Error marking conversation read', err);
+        }
       } catch (err) {
         console.error("Error fetching messages", err);
         setLoading(false);
       }
     };
     getMessages();
-  }, [currentUser, targetUser]);
+  }, [currentUser._id, targetUser._id]);
 
   // 2. Listen for Incoming Messages (Real-time)
   useEffect(() => {
     if (!socket) return;
-    
+
     const handleMessage = (data) => {
       // Only append if the message is from the person we are currently chatting with
       if (data.senderId === targetUser._id) {
         setMessages((prev) => [
           ...prev,
           {
-            sender: data.senderId,
+            sender: { _id: data.senderId, username: targetUser.username },
             text: data.text,
             createdAt: Date.now(),
           },
         ]);
+        // Mark conversation read (messages from targetUser to currentUser)
+        axios.put(`http://localhost:5000/api/messages/mark-read-conversation/${currentUser._id}/${targetUser._id}`).catch(err => console.error('Mark read failed', err));
+        if (onMessageSent) onMessageSent();
       }
     };
 
@@ -67,7 +80,11 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose }) => {
     };
 
     // A. Optimistic UI Update (Show it immediately)
-    const optimisticMsg = { ...messageData, createdAt: Date.now() };
+    const optimisticMsg = {
+      sender: { _id: currentUser._id, username: currentUser.username },
+      text: newMessage,
+      createdAt: Date.now()
+    };
     setMessages([...messages, optimisticMsg]);
     setNewMessage("");
 
@@ -82,6 +99,11 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose }) => {
         text: messageData.text,
       });
 
+      // D. Notify parent to update recent chats list
+      if (onMessageSent) {
+        onMessageSent();
+      }
+
     } catch (err) {
       console.error("Failed to send message", err);
     }
@@ -93,8 +115,8 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose }) => {
       <div className="bg-indigo-600 p-4 rounded-t-2xl flex justify-between items-center text-white shadow-md">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <img 
-              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${targetUser.username}`} 
+            <img
+              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${targetUser.username}`}
               className="w-10 h-10 rounded-full bg-white border-2 border-white"
               alt="avatar"
             />
@@ -123,17 +145,17 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose }) => {
         ) : (
           messages.map((m, index) => {
             // Check if message is from 'me' (current user)
-            // We handle both 'sender' object (populated) or 'sender' string (ID)
-            const isMe = (m.sender._id === currentUser._id) || (m.sender === currentUser._id);
-            
+            // Compare IDs as strings to handle both object and string formats
+            const senderId = typeof m.sender === 'object' ? m.sender._id : m.sender;
+            const isMe = senderId === currentUser._id || senderId?.toString() === currentUser._id?.toString();
+
             return (
               <div key={index} ref={scrollRef} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm ${
-                    isMe
+                  className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm ${isMe
                       ? "bg-indigo-600 text-white rounded-br-none"
                       : "bg-white text-gray-800 border border-gray-100 rounded-bl-none"
-                  }`}
+                    }`}
                 >
                   {m.text}
                 </div>
@@ -152,8 +174,8 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose }) => {
           onChange={(e) => setNewMessage(e.target.value)}
           className="flex-1 bg-gray-100 text-sm rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={!newMessage.trim()}
           className="bg-indigo-600 text-white p-2 rounded-full hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
