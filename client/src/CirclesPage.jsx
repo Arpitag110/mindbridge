@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useUI } from "./ui/UiProvider";
 import { useNavigate } from "react-router-dom";
 
 const CirclesPage = () => {
@@ -38,7 +39,7 @@ const CirclesPage = () => {
       // Construct query: ?search=...&tag=...
       let query = `?search=${searchTerm}`;
       if (activeTag !== "All") query += `&tag=${activeTag}`;
-      
+
       const res = await axios.get(`http://localhost:5000/api/circles${query}`);
       setCircles(res.data);
     } catch (err) {
@@ -48,14 +49,16 @@ const CirclesPage = () => {
     }
   };
 
+  const { showToast } = useUI();
+
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.description) return alert("Please fill in required fields");
+    if (!formData.name || !formData.description) return showToast("Please fill in required fields", "error");
 
     try {
       // CLEAN TAGS: Split by comma, trim spaces, and remove '#' if user typed it
       const tagArray = formData.tags.split(",")
-        .map(t => t.trim().replace("#", "")) 
+        .map(t => t.trim().replace("#", ""))
         .filter(t => t);
 
       await axios.post("http://localhost:5000/api/circles", {
@@ -69,7 +72,7 @@ const CirclesPage = () => {
       fetchCircles(); // Refresh list
     } catch (err) {
       console.error(err);
-      alert("Failed to create circle. Name might be taken.");
+      showToast("Failed to create circle. Name might be taken.", "error");
     }
   };
 
@@ -104,13 +107,13 @@ const CirclesPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      
+
       {/* 1. HERO SECTION */}
       <div className="bg-indigo-600 text-white py-8 px-4 md:px-8">
         <div className="max-w-6xl mx-auto">
-          
+
           {/* Back to Orbit Button */}
-          <button 
+          <button
             onClick={() => navigate("/home")}
             className="flex items-center gap-2 text-indigo-200 hover:text-white transition-colors font-medium mb-6"
           >
@@ -122,7 +125,7 @@ const CirclesPage = () => {
               <h1 className="text-3xl font-bold mb-2">Find Your Circle</h1>
               <p className="text-indigo-100">Connect with others who understand your journey.</p>
             </div>
-            <button 
+            <button
               onClick={() => setShowModal(true)}
               className="bg-white text-indigo-600 px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-indigo-50 transition-transform hover:scale-105"
             >
@@ -135,13 +138,13 @@ const CirclesPage = () => {
       {/* 2. FILTERS & SEARCH */}
       <div className="max-w-6xl mx-auto px-4 md:px-8 -mt-8">
         <div className="bg-white p-4 rounded-2xl shadow-md flex flex-col md:flex-row gap-4 items-center">
-          
+
           {/* Search Bar */}
           <div className="flex-1 w-full relative">
             <span className="absolute left-3 top-3 text-gray-400">🔍</span>
-            <input 
-              type="text" 
-              placeholder="Search circles (e.g. 'Coding', 'Anxiety')..." 
+            <input
+              type="text"
+              placeholder="Search circles (e.g. 'Coding', 'Anxiety')..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && fetchCircles()}
@@ -181,16 +184,16 @@ const CirclesPage = () => {
               return (
                 <div key={circle._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col h-full">
                   {/* Card Header (Color strip for now) */}
-                  <div 
+                  <div
                     onClick={() => btn.text === "Joined" && handleEnter(circle._id)}
                     className={`h-24 rounded-t-2xl w-full cursor-pointer ${circle.coverImage ? '' : 'bg-gradient-to-r from-indigo-300 to-purple-300'}`}
                   >
                     {circle.coverImage && <img src={circle.coverImage} className="w-full h-full object-cover rounded-t-2xl" />}
                   </div>
-                  
+
                   <div className="p-6 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mb-2">
-                      <h3 
+                      <h3
                         onClick={() => btn.text === "Joined" && handleEnter(circle._id)}
                         className="text-xl font-bold text-gray-800 line-clamp-1 cursor-pointer hover:text-indigo-600 transition-colors"
                       >
@@ -198,9 +201,9 @@ const CirclesPage = () => {
                       </h3>
                       {circle.visibility === 'private' && <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">🔒 Private</span>}
                     </div>
-                    
+
                     <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-1">{circle.description}</p>
-                    
+
                     {/* Tags Display - Visually add # */}
                     <div className="flex flex-wrap gap-2 mb-4">
                       {circle.tags.slice(0, 3).map((t, i) => (
@@ -213,8 +216,8 @@ const CirclesPage = () => {
                       <div className="text-xs text-gray-500">
                         <span className="font-bold text-gray-700">{circle.members.length}</span> members
                       </div>
-                      
-                      <button 
+
+                      <button
                         onClick={() => {
                           if (btn.text === "Joined") {
                             handleEnter(circle._id);
@@ -248,11 +251,11 @@ const CirclesPage = () => {
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Circle Name</label>
-                <input 
+                <input
                   required
-                  type="text" 
+                  type="text"
                   value={formData.name}
-                  onChange={e => setFormData({...formData, name: e.target.value})}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
                   className="w-full border rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
                   placeholder="e.g. Anxiety Support Group"
                 />
@@ -260,10 +263,10 @@ const CirclesPage = () => {
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
-                <textarea 
+                <textarea
                   required
                   value={formData.description}
-                  onChange={e => setFormData({...formData, description: e.target.value})}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
                   className="w-full border rounded-xl px-4 py-2 h-24 resize-none focus:ring-2 focus:ring-indigo-500 outline-none"
                   placeholder="What is this circle about?"
                 ></textarea>
@@ -271,10 +274,10 @@ const CirclesPage = () => {
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Tags (comma separated)</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.tags}
-                  onChange={e => setFormData({...formData, tags: e.target.value})}
+                  onChange={e => setFormData({ ...formData, tags: e.target.value })}
                   className="w-full border rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
                   placeholder="e.g. stress, work, sleep"
                 />
@@ -282,20 +285,20 @@ const CirclesPage = () => {
 
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="radio" 
+                  <input
+                    type="radio"
                     name="visibility"
                     checked={formData.visibility === 'public'}
-                    onChange={() => setFormData({...formData, visibility: 'public'})}
+                    onChange={() => setFormData({ ...formData, visibility: 'public' })}
                   />
                   <span className="text-sm text-gray-700">Public</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="radio" 
+                  <input
+                    type="radio"
                     name="visibility"
                     checked={formData.visibility === 'private'}
-                    onChange={() => setFormData({...formData, visibility: 'private'})}
+                    onChange={() => setFormData({ ...formData, visibility: 'private' })}
                   />
                   <span className="text-sm text-gray-700">Private (Invite only)</span>
                 </label>

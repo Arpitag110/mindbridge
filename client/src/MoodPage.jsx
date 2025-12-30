@@ -1,24 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useUI } from "./ui/UiProvider";
 
 const MoodPage = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  
+  const { showToast, showConfirm } = useUI();
+
   // Form States
   const [moodScore, setMoodScore] = useState(3);
   const [selectedTags, setSelectedTags] = useState([]);
   const [note, setNote] = useState("");
   const [visibility, setVisibility] = useState("Private"); // New State
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Logic State
   const [isEditingToday, setIsEditingToday] = useState(false); // Tracks if we are editing today's entry
 
   // Data States
   const [history, setHistory] = useState([]);
-  
+
   // Modal State
   const [showWisdom, setShowWisdom] = useState(false);
   const [wisdomMessage, setWisdomMessage] = useState(null);
@@ -105,7 +107,7 @@ const MoodPage = () => {
   const handleSave = async () => {
     if (!user) return;
     setIsSubmitting(true);
-    
+
     try {
       await axios.post("http://localhost:5000/api/mood/add", {
         userId: user._id || user.id,
@@ -117,32 +119,33 @@ const MoodPage = () => {
       });
 
       await fetchHistory(user._id || user.id);
-      
+
       // Only show wisdom if creating new, or if updating to a different mood score? 
       // Let's show it always for positive reinforcement.
       setWisdomMessage(wisdomQuotes[moodScore]);
       setShowWisdom(true);
-      
+
     } catch (err) {
       console.error("Error saving mood:", err);
-      alert("Something went wrong.");
+      showToast("Something went wrong.", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (moodId) => {
-    if(!window.confirm("Are you sure you want to delete this entry?")) return;
+    const ok = await showConfirm("Are you sure you want to delete this entry?");
+    if (!ok) return;
     try {
       await axios.delete(`http://localhost:5000/api/mood/delete/${moodId}`);
       // If we deleted today's entry, reset form
       const deletedWasToday = history.find(h => h._id === moodId && isToday(h.createdAt));
-      if(deletedWasToday) {
-          setIsEditingToday(false);
-          setMoodScore(3);
-          setNote("");
-          setSelectedTags([]);
-          setVisibility("Private");
+      if (deletedWasToday) {
+        setIsEditingToday(false);
+        setMoodScore(3);
+        setNote("");
+        setSelectedTags([]);
+        setVisibility("Private");
       }
       fetchHistory(user._id || user.id);
     } catch (err) {
@@ -165,38 +168,38 @@ const MoodPage = () => {
     const dateStr = date.toISOString().split('T')[0];
     const entry = history.find(h => h.createdAt.startsWith(dateStr));
     if (entry) {
-        const m = moodOptions.find(opt => opt.score === entry.score);
-        return m.activeColor.split(' ')[0];
+      const m = moodOptions.find(opt => opt.score === entry.score);
+      return m.activeColor.split(' ')[0];
     }
     return "bg-white/30";
   };
 
   return (
     <div className={`min-h-screen w-screen transition-all duration-1000 ease-in-out bg-gradient-to-br ${currentMood.bgGradient} flex flex-col items-center py-8 px-4 font-sans overflow-y-auto`}>
-      
+
       {/* Back Button */}
       <div className="w-full max-w-2xl mb-4">
-        <button 
-            onClick={() => navigate("/home")} 
-            className="text-gray-700 font-semibold text-lg hover:text-indigo-600 transition-colors flex items-center gap-2"
+        <button
+          onClick={() => navigate("/home")}
+          className="text-gray-700 font-semibold text-lg hover:text-indigo-600 transition-colors flex items-center gap-2"
         >
-            <span>←</span> Back to Orbit
+          <span>←</span> Back to Home
         </button>
       </div>
 
       {/* Main Glass Card */}
       <div className="bg-white/60 backdrop-blur-xl w-full max-w-2xl rounded-[2rem] shadow-2xl p-6 md:p-10 border border-white/50 transition-all duration-500 mb-10 relative">
-        
+
         {/* HEATMAP */}
         <div className="absolute top-6 right-6 hidden sm:flex gap-1">
-             {getLast7Days().map((date, idx) => (
-                 <div key={idx} className="flex flex-col items-center gap-1">
-                     <div 
-                        title={date.toDateString()}
-                        className={`w-3 h-3 rounded-full ${getMoodColorForDate(date)}`} 
-                     />
-                 </div>
-             ))}
+          {getLast7Days().map((date, idx) => (
+            <div key={idx} className="flex flex-col items-center gap-1">
+              <div
+                title={date.toDateString()}
+                className={`w-3 h-3 rounded-full ${getMoodColorForDate(date)}`}
+              />
+            </div>
+          ))}
         </div>
 
         {/* HEADER: Dynamic Text based on whether we are Editing or New */}
@@ -205,9 +208,9 @@ const MoodPage = () => {
             {isEditingToday ? "Update your check-in" : "How are you feeling?"}
           </h1>
           {isEditingToday && (
-              <p className="text-sm text-indigo-600 font-medium bg-indigo-50 inline-block px-3 py-1 rounded-full">
-                  You've already checked in today. Changes here will update your entry.
-              </p>
+            <p className="text-sm text-indigo-600 font-medium bg-indigo-50 inline-block px-3 py-1 rounded-full">
+              You've already checked in today. Changes here will update your entry.
+            </p>
           )}
         </div>
 
@@ -220,8 +223,8 @@ const MoodPage = () => {
                 className={`
                   flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl text-3xl md:text-4xl
                   transition-all duration-300 transform hover:scale-110 
-                  ${moodScore === option.score 
-                    ? `${option.activeColor} shadow-lg ring-4 ring-offset-2 ring-offset-white/50 scale-110` 
+                  ${moodScore === option.score
+                    ? `${option.activeColor} shadow-lg ring-4 ring-offset-2 ring-offset-white/50 scale-110`
                     : "bg-white/40 text-gray-400 hover:bg-white/80 grayscale hover:grayscale-0"
                   }
                 `}
@@ -231,9 +234,9 @@ const MoodPage = () => {
             </div>
           ))}
         </div>
-        
+
         <div className="text-center font-bold text-xl text-gray-800 mb-6 uppercase tracking-widest opacity-80">
-           {currentMood.label}
+          {currentMood.label}
         </div>
 
         {/* 2. TAGS */}
@@ -260,7 +263,7 @@ const MoodPage = () => {
 
         {/* 3. NOTE */}
         <div className="mb-6">
-           <textarea
+          <textarea
             placeholder="Add a note..."
             className="w-full bg-white/50 border border-gray-200 rounded-xl p-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white transition-all resize-none h-24"
             value={note}
@@ -270,22 +273,21 @@ const MoodPage = () => {
 
         {/* 4. VISIBILITY SETTINGS */}
         <div className="mb-8">
-            <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">Visibility</p>
-            <div className="flex bg-white/50 rounded-xl p-1 border border-gray-200">
-                {visibilityOptions.map((option) => (
-                    <button
-                        key={option}
-                        onClick={() => setVisibility(option)}
-                        className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                            visibility === option 
-                            ? "bg-white text-indigo-600 shadow-sm" 
-                            : "text-gray-500 hover:text-gray-700"
-                        }`}
-                    >
-                        {option}
-                    </button>
-                ))}
-            </div>
+          <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">Visibility</p>
+          <div className="flex bg-white/50 rounded-xl p-1 border border-gray-200">
+            {visibilityOptions.map((option) => (
+              <button
+                key={option}
+                onClick={() => setVisibility(option)}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${visibility === option
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                  }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* 5. SAVE BUTTON */}
@@ -299,42 +301,42 @@ const MoodPage = () => {
 
         {/* 6. HISTORY WITH VISIBILITY INDICATOR */}
         {history.length > 0 && (
-            <div className="mt-12 border-t border-gray-200/50 pt-6">
-                <h3 className="text-gray-500 font-bold uppercase text-xs tracking-wider mb-4">Past Entries</h3>
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                    {history.map((entry) => {
-                        const moodData = moodOptions.find(m => m.score === entry.score);
-                        return (
-                            <div key={entry._id} className="group bg-white/40 p-4 rounded-xl flex items-center justify-between border border-white/50 hover:bg-white/60 transition-colors relative">
-                                <div className="flex items-center gap-4">
-                                    <span className="text-2xl">{moodData?.emoji}</span>
-                                    <div>
-                                        <p className="text-sm font-semibold text-gray-800">
-                                            {moodData?.label} 
-                                            {entry.emotions.length > 0 && <span className="text-gray-500 font-normal"> • {entry.emotions.join(", ")}</span>}
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <p className="text-xs text-gray-500">{new Date(entry.createdAt).toLocaleDateString()}</p>
-                                            {/* Visibility Badge */}
-                                            <span className="text-[10px] uppercase bg-gray-200/50 text-gray-500 px-2 rounded-md">
-                                                {entry.visibility || "Private"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <button 
-                                  onClick={() => handleDelete(entry._id)}
-                                  className="text-red-300 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  title="Delete entry"
-                                >
-                                  🗑️
-                                </button>
-                            </div>
-                        )
-                    })}
-                </div>
+          <div className="mt-12 border-t border-gray-200/50 pt-6">
+            <h3 className="text-gray-500 font-bold uppercase text-xs tracking-wider mb-4">Past Entries</h3>
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+              {history.map((entry) => {
+                const moodData = moodOptions.find(m => m.score === entry.score);
+                return (
+                  <div key={entry._id} className="group bg-white/40 p-4 rounded-xl flex items-center justify-between border border-white/50 hover:bg-white/60 transition-colors relative">
+                    <div className="flex items-center gap-4">
+                      <span className="text-2xl">{moodData?.emoji}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {moodData?.label}
+                          {entry.emotions.length > 0 && <span className="text-gray-500 font-normal"> • {entry.emotions.join(", ")}</span>}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-xs text-gray-500">{new Date(entry.createdAt).toLocaleDateString()}</p>
+                          {/* Visibility Badge */}
+                          <span className="text-[10px] uppercase bg-gray-200/50 text-gray-500 px-2 rounded-md">
+                            {entry.visibility || "Private"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleDelete(entry._id)}
+                      className="text-red-300 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete entry"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                )
+              })}
             </div>
+          </div>
         )}
 
       </div>
@@ -344,10 +346,10 @@ const MoodPage = () => {
       {showWisdom && wisdomMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center animate-bounce-in relative border border-white/50">
-            
+
             <h2 className="text-2xl font-bold text-indigo-900 mb-2">{wisdomMessage.title}</h2>
             <p className="text-gray-600 italic text-lg mb-6">"{wisdomMessage.quote}"</p>
-            
+
             <div className="bg-indigo-50 p-4 rounded-xl mb-8">
               <span className="text-xs font-bold text-indigo-400 uppercase tracking-wide">Suggested Action</span>
               <p className="text-indigo-800 font-medium">{wisdomMessage.action}</p>
@@ -355,21 +357,21 @@ const MoodPage = () => {
 
             {/* BUTTONS GROUP */}
             <div className="flex flex-col gap-3">
-                {/* Primary: Journal */}
-                <button 
-                  onClick={() => navigate("/journal")}
-                  className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-indigo-500/30"
-                >
-                  <span>✍️</span> Want to write about it?
-                </button>
+              {/* Primary: Journal */}
+              <button
+                onClick={() => navigate("/journal")}
+                className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-indigo-500/30"
+              >
+                <span>✍️</span> Want to write about it?
+              </button>
 
-                {/* Secondary: Close */}
-                <button 
-                  onClick={() => setShowWisdom(false)}
-                  className="w-full bg-white border border-gray-200 text-gray-500 font-medium py-3 rounded-xl hover:bg-gray-50 hover:text-gray-700 transition-colors"
-                >
-                  No thanks, I'm good
-                </button>
+              {/* Secondary: Close */}
+              <button
+                onClick={() => setShowWisdom(false)}
+                className="w-full bg-white border border-gray-200 text-gray-500 font-medium py-3 rounded-xl hover:bg-gray-50 hover:text-gray-700 transition-colors"
+              >
+                No thanks, I'm good
+              </button>
             </div>
 
           </div>

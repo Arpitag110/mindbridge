@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useUI } from "./ui/UiProvider";
 import { useSocket } from "./SocketContext";
 import {
   Settings, Users, AlertCircle, Trash2, Edit3, Flag,
@@ -13,6 +14,7 @@ const SingleCirclePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { socket } = useSocket();
+  const { showToast, showConfirm, showPrompt } = useUI();
 
   // Data State
   const [circle, setCircle] = useState(null);
@@ -134,21 +136,23 @@ const SingleCirclePage = () => {
       // action = 'accept' or 'reject'
       await axios.put(`http://localhost:5000/api/circles/${id}/request`, { userId: targetUserId, action, adminId: currentUser._id });
       fetchCircleData(); // Refresh list
-    } catch (err) { console.error(err); alert("Action failed"); }
+    } catch (err) { console.error(err); showToast("Action failed", "error"); }
   };
 
   // 2. Manage Members (Kick)
   const handleRemoveMember = async (targetUserId) => {
-    if (!window.confirm("Are you sure you want to remove this member?")) return;
+    const ok = await showConfirm("Are you sure you want to remove this member?");
+    if (!ok) return;
     try {
       await axios.put(`http://localhost:5000/api/circles/${id}/remove-member`, { userId: targetUserId, adminId: currentUser._id });
       fetchCircleData();
-    } catch (err) { console.error(err); alert("Failed to remove member"); }
+    } catch (err) { console.error(err); showToast("Failed to remove member", "error"); }
   };
 
   // 3. Manage Content (Delete/Dismiss)
   const handleDeletePost = async (postId) => {
-    if (!window.confirm("Permanently delete this post?")) return;
+    const ok = await showConfirm("Permanently delete this post?");
+    if (!ok) return;
     try {
       const isAdmin = circle.admins.some(a => a._id === currentUser._id);
       await axios.delete(`http://localhost:5000/api/posts/${postId}`, { data: { userId: currentUser._id, isAdmin } });
@@ -172,15 +176,15 @@ const SingleCirclePage = () => {
       await axios.put(`http://localhost:5000/api/circles/${id}`, { userId: currentUser._id, updates: editFormData });
       setShowAdminModal(false);
       fetchCircleData();
-    } catch (err) { alert("Failed update"); }
+    } catch (err) { showToast("Failed update", "error"); }
   };
 
   // User Actions
   const handleReportPost = async (postId) => {
-    const r = prompt("Reason for reporting?");
+    const r = await showPrompt("Reason for reporting?");
     if (r) {
       await axios.put(`http://localhost:5000/api/posts/${postId}/report`, { userId: currentUser._id, reason: r });
-      alert("Reported to admins.");
+      showToast("Reported to admins.", "success");
       fetchCircleData();
     }
   };
@@ -350,7 +354,7 @@ const SingleCirclePage = () => {
                         setSelectedMember({ ...member });
                         setSelectedMemberEntries(res.data);
                         setShowMemberModal(true);
-                      } catch (err) { console.error('Failed to load member entries', err); alert('Failed to load entries'); }
+                      } catch (err) { console.error('Failed to load member entries', err); showToast('Failed to load entries', 'error'); }
                     }} className="text-sm font-bold text-gray-700 cursor-pointer hover:underline">{member.username}</p>
                     {circle.admins.some(a => a._id === member._id) && <span className="text-[10px] uppercase font-bold text-indigo-500">Admin</span>}
                   </div>

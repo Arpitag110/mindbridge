@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Send, Loader } from "lucide-react";
 import axios from "axios";
+import { useUI } from "./ui/UiProvider";
 
 const ChatWidget = ({ socket, currentUser, targetUser, onClose, onMessageSent }) => {
   const [messages, setMessages] = useState([]);
@@ -11,6 +12,7 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose, onMessageSent })
   // Profile modal state
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileEntries, setProfileEntries] = useState({ moods: [], journals: [] });
+  const { showToast } = useUI();
 
   // 1. Load Chat History on Open
   useEffect(() => {
@@ -137,7 +139,7 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose, onMessageSent })
               const res = await axios.get(`http://localhost:5000/api/users/${targetUser._id}/visible-entries?viewerId=${currentUser._id}`);
               setProfileEntries(res.data);
               setShowProfileModal(true);
-            } catch (err) { console.error('Failed to load profile entries', err); alert('Failed to load entries'); }
+            } catch (err) { console.error('Failed to load profile entries', err); showToast('Failed to load entries', 'error'); }
           }} className="bg-indigo-500 hover:bg-indigo-400 px-3 py-1 rounded text-white text-xs">View</button>
           <button onClick={onClose} className="hover:bg-indigo-500 p-1 rounded-full transition">
             <X size={18} />
