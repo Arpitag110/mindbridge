@@ -132,7 +132,7 @@ const ProfilePage = () => {
       {/* Header */}
       <div className="max-w-3xl mx-auto flex items-center justify-between mb-8">
         <button onClick={() => navigate("/home")} className="text-gray-500 hover:text-indigo-600 transition-colors">
-          ← Back to Orbit
+          ← Back to Home
         </button>
         <h1 className="text-2xl font-bold text-gray-800">Edit Profile</h1>
         <div className="w-20"></div> {/* Spacer */}

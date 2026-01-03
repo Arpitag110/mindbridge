@@ -36,6 +36,11 @@ const SingleCirclePage = () => {
   const [qaTitle, setQaTitle] = useState("");
   const [qaBody, setQaBody] = useState("");
   const [showAskForm, setShowAskForm] = useState(false);
+  const [answerText, setAnswerText] = useState("");
+  const [activeAnswerBox, setActiveAnswerBox] = useState(null);
+  const [editingQuestionId, setEditingQuestionId] = useState(null);
+  const [editQuestionTitle, setEditQuestionTitle] = useState("");
+  const [editQuestionBody, setEditQuestionBody] = useState("");
 
   // ADMIN STATE
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -219,6 +224,82 @@ const SingleCirclePage = () => {
     } catch (err) { console.error(err); }
   };
 
+  // --- Q&A ACTIONS ---
+  const handleAnswerSubmit = async (questionId) => {
+    if (!answerText.trim()) return;
+    try {
+      const res = await axios.put(`http://localhost:5000/api/questions/${questionId}/answer`, {
+        userId: currentUser._id,
+        text: answerText
+      });
+      setQuestions(questions.map(q => q._id === questionId ? res.data : q));
+      setAnswerText("");
+      setActiveAnswerBox(null);
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteQuestion = async (questionId) => {
+    const ok = await showConfirm("Permanently delete this question?");
+    if (!ok) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/questions/${questionId}`, {
+        data: { userId: currentUser._id }
+      });
+      setQuestions(questions.filter(q => q._id !== questionId));
+    } catch (err) { console.error(err); }
+  };
+
+  const startEditingQuestion = (question) => {
+    setEditingQuestionId(question._id);
+    setEditQuestionTitle(question.title);
+    setEditQuestionBody(question.body);
+  };
+
+  const saveEditQuestion = async (questionId) => {
+    try {
+      const res = await axios.put(`http://localhost:5000/api/questions/${questionId}`, {
+        userId: currentUser._id,
+        title: editQuestionTitle,
+        body: editQuestionBody
+      });
+      setQuestions(prevQuestions =>
+        prevQuestions.map(q => q._id === questionId ? res.data : q)
+      );
+      setEditingQuestionId(null);
+    } catch (err) { console.error(err); }
+  };
+
+  const handleUpvoteAnswer = async (questionId, answerId) => {
+    try {
+      const res = await axios.put(`http://localhost:5000/api/questions/${questionId}/answer/${answerId}/upvote`, {
+        userId: currentUser._id
+      });
+      setQuestions(prevQuestions =>
+        prevQuestions.map(q => q._id === questionId ? res.data : q)
+      );
+    } catch (err) {
+      console.error("Upvote error:", err);
+      showToast("Failed to upvote answer", "error");
+    }
+  };
+
+  const handleDeleteAnswer = async (questionId, answerId) => {
+    const ok = await showConfirm("Delete this answer?");
+    if (!ok) return;
+    try {
+      const res = await axios.put(`http://localhost:5000/api/questions/${questionId}/answer/${answerId}/delete`, {
+        userId: currentUser._id
+      });
+      setQuestions(prevQuestions =>
+        prevQuestions.map(q => q._id === questionId ? res.data : q)
+      );
+      showToast("Answer deleted successfully", "success");
+    } catch (err) {
+      console.error("Delete answer error:", err);
+      showToast("Failed to delete answer", "error");
+    }
+  };
+
   if (loading) return <div className="p-10 text-center">Loading...</div>;
   if (!circle) return <div className="p-10 text-center">Circle not found.</div>;
 
@@ -300,7 +381,134 @@ const SingleCirclePage = () => {
                   )}
                 </div>
               )}
-              {questions.map(q => (<div key={q._id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"><h3 className="font-bold text-lg">{q.title}</h3><p className="text-gray-600">{q.body}</p></div>))}
+              {questions.map(q => {
+                const isQuestionOwner = currentUser?._id === q.userId._id;
+                return (
+                  <div key={q._id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <img src={getAvatar(q.userId.avatar || q.userId._id || 'default')} className="w-10 h-10 rounded-full bg-gray-100" />
+                        <div>
+                          <h4 className="font-bold text-gray-800">{q.userId.username}</h4>
+                          <p className="text-xs text-gray-400">{new Date(q.createdAt).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 text-xs">
+                        {isQuestionOwner && (
+                          <>
+                            <button onClick={() => handleDeleteQuestion(q._id)} className="text-red-500 hover:underline">Delete</button>
+                            <button onClick={() => startEditingQuestion(q)} className="text-indigo-600">Edit</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {editingQuestionId === q._id ? (
+                      <div className="mb-4 space-y-3">
+                        <input
+                          value={editQuestionTitle}
+                          onChange={e => setEditQuestionTitle(e.target.value)}
+                          className="w-full border p-2 rounded-lg font-bold"
+                          placeholder="Question Title"
+                        />
+                        <textarea
+                          value={editQuestionBody}
+                          onChange={e => setEditQuestionBody(e.target.value)}
+                          className="w-full border p-2 rounded-lg"
+                          placeholder="Description..."
+                          rows="3"
+                        />
+                        <button
+                          onClick={() => saveEditQuestion(q._id)}
+                          className="bg-indigo-600 text-white px-4 py-2 rounded text-sm"
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="font-bold text-lg mb-2">{q.title}</h3>
+                        <p className="text-gray-600 mb-4">{q.body}</p>
+                      </>
+                    )}
+
+                    {/* Answers Section */}
+                    <div className="border-t pt-4 mt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-semibold text-gray-700">Answers ({q.answers.length})</h4>
+                        {isMember && (
+                          <button
+                            onClick={() => setActiveAnswerBox(activeAnswerBox === q._id ? null : q._id)}
+                            className="text-indigo-600 text-sm hover:underline"
+                          >
+                            {activeAnswerBox === q._id ? 'Cancel' : 'Add Answer'}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Answer Input Form */}
+                      {activeAnswerBox === q._id && (
+                        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                          <textarea
+                            value={answerText}
+                            onChange={e => setAnswerText(e.target.value)}
+                            placeholder="Write your answer..."
+                            className="w-full border p-2 rounded-lg resize-none"
+                            rows="3"
+                          />
+                          <button
+                            onClick={() => handleAnswerSubmit(q._id)}
+                            className="mt-2 bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700"
+                          >
+                            Submit Answer
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Display Answers */}
+                      {q.answers.map((answer, index) => {
+                        const isUpvoted = answer.upvotes.includes(currentUser?._id);
+                        const isAnswerOwner = currentUser?._id === answer.userId._id;
+                        const isQuestionOwner = currentUser?._id === q.userId._id;
+                        return (
+                          <div key={index} className="flex gap-3 p-3 bg-gray-50 rounded-lg mb-2">
+                            <img src={getAvatar(answer.userId.avatar || answer.userId._id || 'default')} className="w-8 h-8 rounded-full bg-gray-100" />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-semibold text-sm">{answer.userId.username}</span>
+                                <div className="flex items-center gap-2">
+                                  {(isAnswerOwner || isQuestionOwner) && (
+                                    <button
+                                      onClick={() => handleDeleteAnswer(q._id, answer._id)}
+                                      className="text-red-500 text-xs hover:underline"
+                                    >
+                                      Delete
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleUpvoteAnswer(q._id, answer._id)}
+                                    className={`text-xs px-2 py-1 rounded ${isUpvoted ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
+                                  >
+                                    👍 {answer.upvotes.length}
+                                  </button>
+                                </div>
+                              </div>
+                              <p className="text-gray-700 text-sm">{answer.text}</p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {new Date(answer.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {q.answers.length === 0 && (
+                        <p className="text-gray-400 text-sm text-center py-4">No answers yet. Be the first to help!</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
