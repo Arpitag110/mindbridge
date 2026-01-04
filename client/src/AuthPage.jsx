@@ -35,7 +35,11 @@ function AuthPage() {
       // navigate("/dashboard"); // We will create this later
     } catch (err) {
       setError(true);
-      console.error(err);
+      if (err.response?.data?.message) {
+        showToast(err.response.data.message, "error");
+      } else {
+        showToast("Registration failed. Please try again.", "error");
+      }
     }
   };
 
@@ -53,7 +57,11 @@ function AuthPage() {
       setIsSignUp(false); // Switch to login view
     } catch (err) {
       setError(true);
-      console.error(err);
+      if (err.response?.data?.message) {
+        showToast(err.response.data.message, "error");
+      } else {
+        showToast("Registration failed. Please try again.", "error");
+      }
     }
   };
 

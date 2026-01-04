@@ -22,19 +22,14 @@ const DashboardPage = () => {
   const [activeChat, setActiveChat] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  const [recentChats, setRecentChats] = useState([]); // <--- NEW STATE
+  const [recentChats, setRecentChats] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchDashboardData();
       fetchNotifications();
-      fetchRecentChats(); // <--- Fetch chats on load
-
-      // Register user with Socket
-      if (socket) {
-        socket.emit("addUser", user._id);
-      }
+      fetchRecentChats();
     }
   }, [user, socket]);
 
@@ -49,7 +44,7 @@ const DashboardPage = () => {
   useEffect(() => {
     if (!socket) return;
     const handleNewNotification = (data) => {
-      setNotifications((prev) => [data, ...prev]);
+      setNotifications((prev) => [...prev, data]);
     };
     socket.on("getNotification", handleNewNotification);
     return () => {

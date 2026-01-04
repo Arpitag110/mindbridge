@@ -50,7 +50,7 @@ app.use("/api/messages", messageRoute); // <--- ADDED: Use Message Route
 let onlineUsers = [];
 
 io.on("connection", (socket) => {
-  
+
   // 1. ADD USER
   socket.on("newUser", ({ username, userId }) => {
     onlineUsers = onlineUsers.filter(user => user.username !== username);
@@ -100,20 +100,43 @@ io.on("connection", (socket) => {
 
   // 4. DIRECT NOTIFICATION (Like/Comment)
   socket.on("sendNotification", async ({ senderName, receiverName, type, message }) => {
-    const receiver = onlineUsers.find(user => user.username === receiverName);
-    if (receiver) {
-      io.to(receiver.socketId).emit("getNotification", {
-        senderName,
-        type,
-        message,
-        createdAt: Date.now()
-      });
+    try {
+      // A. Save to database for offline users (and history)
+      const receiverUser = await require('./models/User').findOne({ username: receiverName });
+      if (receiverUser) {
+        const newNotif = new Notification({
+          recipientId: receiverUser._id,
+          senderName,
+          type,
+          message,
+        });
+        await newNotif.save();
+      }
+
+      // B. Send real-time if user is online
+      const receiver = onlineUsers.find(user => user.username === receiverName);
+      if (receiver) {
+        io.to(receiver.socketId).emit("getNotification", {
+          senderName,
+          type,
+          message,
+          createdAt: Date.now()
+        });
+      } else {
+      }
+    } catch (err) {
+      console.error("Notification error:", err);
     }
   });
 
   // 5. CHAT MESSAGE (DIRECT) <--- ADDED: Chat Logic
   socket.on("sendMessage", ({ senderId, receiverId, text }) => {
+    console.log("💬 Message received:", { senderId, receiverId, text });
+    console.log("👥 Online users:", onlineUsers.map(u => ({ username: u.username, userId: u.userId })));
+
     const receiver = onlineUsers.find(user => user.userId === receiverId);
+    console.log("🎯 Found receiver:", receiver);
+
     if (receiver) {
       io.to(receiver.socketId).emit("getMessage", {
         senderId,
@@ -130,5 +153,5 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });

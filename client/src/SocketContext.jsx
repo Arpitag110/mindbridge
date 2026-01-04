@@ -21,11 +21,11 @@ export const SocketProvider = ({ children }) => {
       setSocket(newSocket);
 
       // 3. Register the user online
-      newSocket.emit("newUser", currentUser.username);
+      newSocket.emit("newUser", { username: currentUser.username, userId: currentUser._id });
 
       // 4. Listen for incoming notifications
       newSocket.on("getNotification", (data) => {
-        setNotifications((prev) => [data, ...prev]);
+        setNotifications((prev) => [...prev, data]);
       });
 
       return () => newSocket.disconnect();

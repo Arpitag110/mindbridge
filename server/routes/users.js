@@ -112,8 +112,17 @@ router.put("/:id", async (req, res) => {
       res.status(200).json({ ...other, stats: { moodCount, journalCount } });
 
     } catch (err) {
-      console.log(err);
-      return res.status(500).json(err);
+      if (err.code === 11000) {
+        // Duplicate key error (username or email already exists)
+        if (err.keyPattern?.username) {
+          return res.status(400).json({ message: "Username already taken" });
+        }
+        if (err.keyPattern?.email) {
+          return res.status(400).json({ message: "Email already registered" });
+        }
+        return res.status(400).json({ message: "Account already exists" });
+      }
+      return res.status(500).json({ message: "Update failed", error: err.message });
     }
   } else {
     return res.status(403).json("You can only update your own account!");
