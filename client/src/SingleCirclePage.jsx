@@ -149,9 +149,13 @@ const SingleCirclePage = () => {
     const ok = await showConfirm("Are you sure you want to remove this member?");
     if (!ok) return;
     try {
-      await axios.put(`http://localhost:5000/api/circles/${id}/remove-member`, { userId: targetUserId, adminId: currentUser._id });
+      await axios.put(`http://localhost:5000/api/circles/${id}/kick`, { memberId: targetUserId, adminId: currentUser._id });
       fetchCircleData();
-    } catch (err) { console.error(err); showToast("Failed to remove member", "error"); }
+      showToast("Member removed successfully", "success");
+    } catch (err) { 
+      console.error(err); 
+      showToast(err.response?.data || "Failed to remove member", "error"); 
+    }
   };
 
   // 3. Manage Content (Delete/Dismiss)

@@ -26,6 +26,9 @@ const ProfilePage = () => {
     });
 
     const [interestInput, setInterestInput] = useState("");
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletePassword, setDeletePassword] = useState("");
+    const [deleting, setDeleting] = useState(false);
 
     // --- FETCH DATA ---
     useEffect(() => {
@@ -116,6 +119,37 @@ const ProfilePage = () => {
     const regenerateAvatar = () => {
         const randomSeed = Math.random().toString(36).substring(7);
         setUser({ ...user, avatar: randomSeed });
+    };
+
+    // --- DELETE ACCOUNT ---
+    const handleDeleteAccount = async () => {
+        if (!deletePassword.trim()) {
+            showToast("Please enter your password to confirm deletion", "error");
+            return;
+        }
+
+        setDeleting(true);
+        try {
+            await axios.delete(`http://localhost:5000/api/users/${user._id}`, {
+                data: { password: deletePassword }
+            });
+
+            showToast("Account deleted successfully", "success");
+            localStorage.removeItem("user");
+            setTimeout(() => {
+                navigate("/auth");
+            }, 1500);
+        } catch (err) {
+            console.error("Error deleting account:", err);
+            if (err.response?.data?.message) {
+                showToast(err.response.data.message, "error");
+            } else {
+                showToast("Failed to delete account. Please try again.", "error");
+            }
+            setDeletePassword("");
+        } finally {
+            setDeleting(false);
+        }
     };
 
     if (loading) return (
@@ -274,7 +308,10 @@ const ProfilePage = () => {
                             </button>
 
                             {/* DELETE ACCOUNT (Secondary Action) */}
-                            <button className="text-red-400 hover:text-red-600 text-sm font-medium py-2 transition-colors">
+                            <button 
+                                onClick={() => setShowDeleteModal(true)}
+                                className="text-red-400 hover:text-red-600 text-sm font-medium py-2 transition-colors"
+                            >
                                 Delete Account
                             </button>
                         </div>
@@ -282,6 +319,53 @@ const ProfilePage = () => {
 
                 </div>
             </div>
+
+            {/* DELETE ACCOUNT MODAL */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+                        <h3 className="text-xl font-bold text-gray-800">Delete Account</h3>
+                        <p className="text-gray-600 text-sm">
+                            This action cannot be undone. All your data, including moods, journals, and posts will be permanently deleted.
+                        </p>
+                        <p className="text-gray-700 font-medium text-sm">
+                            Please enter your password to confirm:
+                        </p>
+                        <input
+                            type="password"
+                            value={deletePassword}
+                            onChange={(e) => setDeletePassword(e.target.value)}
+                            placeholder="Enter your password"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-red-300 focus:outline-none transition-all"
+                            autoFocus
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && deletePassword.trim()) {
+                                    handleDeleteAccount();
+                                }
+                            }}
+                        />
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => {
+                                    setShowDeleteModal(false);
+                                    setDeletePassword("");
+                                }}
+                                disabled={deleting}
+                                className="flex-1 bg-gray-100 text-gray-700 font-medium py-3 rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteAccount}
+                                disabled={deleting || !deletePassword.trim()}
+                                className="flex-1 bg-red-600 text-white font-medium py-3 rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {deleting ? "Deleting..." : "Delete Account"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

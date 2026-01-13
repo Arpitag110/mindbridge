@@ -106,16 +106,22 @@ router.put("/:id/request", async (req, res) => {
 router.put("/:id/kick", async (req, res) => {
   try {
     const circle = await Circle.findById(req.params.id);
-    if (circle.admins.includes(req.body.adminId)) {
-      await circle.updateOne({ 
-        $pull: { members: req.body.memberId, admins: req.body.memberId } 
-      });
-      res.status(200).json("Member removed");
-    } else {
-      res.status(403).json("Not authorized");
+    if (!circle) {
+      return res.status(404).json("Circle not found");
     }
+    
+    // Check if user is admin (convert to string for comparison)
+    const isAdmin = circle.admins.some(adminId => adminId.toString() === req.body.adminId.toString());
+    if (!isAdmin) {
+      return res.status(403).json("Not authorized");
+    }
+    
+    await circle.updateOne({ 
+      $pull: { members: req.body.memberId, admins: req.body.memberId } 
+    });
+    res.status(200).json("Member removed");
   } catch (err) {
-    res.status(500).json(err);
+    res.status(500).json({ message: "Failed to remove member", error: err.message });
   }
 });
 

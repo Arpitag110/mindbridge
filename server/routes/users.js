@@ -131,18 +131,33 @@ router.put("/:id", async (req, res) => {
 
 // --- DELETE USER ---
 router.delete("/:id", async (req, res) => {
-  // ... (Keep your existing delete logic here) ...
-  if (req.params.id) {
-    try {
-      await User.findByIdAndDelete(req.params.id);
-      await Mood.deleteMany({ userId: req.params.id });
-      await Journal.deleteMany({ userId: req.params.id });
-      res.status(200).json("Account has been deleted");
-    } catch (err) {
-      return res.status(500).json(err);
+  try {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({ message: "Password is required to delete account" });
     }
-  } else {
-    return res.status(403).json("You can only delete your own account!");
+
+    // Find the user
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Verify password
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    // Delete user and associated data
+    await User.findByIdAndDelete(req.params.id);
+    await Mood.deleteMany({ userId: req.params.id });
+    await Journal.deleteMany({ userId: req.params.id });
+    
+    res.status(200).json({ message: "Account has been deleted" });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to delete account", error: err.message });
   }
 });
 

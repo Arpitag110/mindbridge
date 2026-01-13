@@ -4,7 +4,7 @@ const UIContext = createContext(null);
 
 let idCounter = 1;
 
-export function UiProvider({ children }) {
+function UiProvider({ children }) {
     const [toasts, setToasts] = useState([]);
     const [confirmState, setConfirmState] = useState(null);
     const [promptState, setPromptState] = useState(null);
@@ -52,7 +52,7 @@ export function UiProvider({ children }) {
 
             {/* Confirm Modal */}
             {confirmState && (
-                <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-60">
+                <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
                     <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
                         <h3 className="font-bold text-lg mb-2">{confirmState.title}</h3>
                         <p className="text-sm text-gray-700 mb-4">{confirmState.message}</p>
@@ -75,7 +75,7 @@ export function UiProvider({ children }) {
 function PromptModal({ state, onClose }) {
     const [val, setVal] = useState("");
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-60">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
                 <h3 className="font-bold text-lg mb-2">{state.title}</h3>
                 <p className="text-sm text-gray-700 mb-3">{state.message}</p>
@@ -89,10 +89,11 @@ function PromptModal({ state, onClose }) {
     );
 }
 
-export const useUI = () => {
+const useUI = () => {
     const ctx = useContext(UIContext);
     if (!ctx) throw new Error("useUI must be used within UiProvider");
     return ctx;
 };
 
+export { UiProvider, useUI };
 export default UiProvider;
