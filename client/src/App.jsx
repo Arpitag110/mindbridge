@@ -7,8 +7,8 @@ import JournalPage from "./JournalPage";
 import ProfilePage from "./ProfilePage";
 import CirclesPage from "./CirclesPage";
 import SingleCirclePage from "./SingleCirclePage";
-import DashboardPage from "./DashboardPage"; // 1. Import Dashboard
-import { SocketProvider } from "./SocketContext"; // 2. Import SocketProvider
+import DashboardPage from "./DashboardPage";
+import { SocketProvider } from "./SocketContext";
 
 function App() {
   return (
