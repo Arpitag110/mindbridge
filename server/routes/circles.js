@@ -25,4 +25,7 @@ router.put("/:id/kick", circleController.kickMember.bind(circleController));
 // Promote member
 router.put("/:id/promote", circleController.promoteMember.bind(circleController));
 
+// Delete circle
+router.delete("/:id", circleController.deleteCircle.bind(circleController));
+
 module.exports = router;

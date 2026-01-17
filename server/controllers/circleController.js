@@ -138,6 +138,36 @@ class CircleController {
       res.status(500).json(err);
     }
   }
+
+  // Delete circle (Admin only)
+  async deleteCircle(req, res) {
+    try {
+      const circle = await Circle.findById(req.params.id);
+      if (!circle) {
+        return res.status(404).json("Circle not found");
+      }
+
+      // Check if user is admin
+      const isAdmin = circle.admins.some(adminId => adminId.toString() === req.body.adminId.toString());
+      if (!isAdmin) {
+        return res.status(403).json("Not authorized");
+      }
+
+      // Delete related data
+      const Post = require("../models/Post");
+      const Question = require("../models/Question");
+      
+      await Post.deleteMany({ circleId: req.params.id });
+      await Question.deleteMany({ circleId: req.params.id });
+      
+      // Delete the circle
+      await Circle.findByIdAndDelete(req.params.id);
+      
+      res.status(200).json({ message: "Circle deleted successfully" });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete circle", error: err.message });
+    }
+  }
 }
 
 module.exports = new CircleController();

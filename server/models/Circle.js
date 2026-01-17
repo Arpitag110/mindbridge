@@ -59,6 +59,11 @@ const CircleSchema = new mongoose.Schema(
       type: String,
       default: "", 
     },
+    // Circle icon/avatar image (base64 or URL)
+    iconImage: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

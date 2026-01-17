@@ -186,12 +186,25 @@ const CirclesPage = () => {
                   {/* Card Header (Color strip for now) */}
                   <div
                     onClick={() => btn.text === "Joined" && handleEnter(circle._id)}
-                    className={`h-24 rounded-t-2xl w-full cursor-pointer ${circle.coverImage ? '' : 'bg-gradient-to-r from-indigo-300 to-purple-300'}`}
+                    className={`h-24 rounded-t-2xl w-full cursor-pointer relative ${circle.coverImage ? '' : 'bg-gradient-to-r from-indigo-300 to-purple-300'}`}
                   >
                     {circle.coverImage && <img src={circle.coverImage} className="w-full h-full object-cover rounded-t-2xl" />}
+                    
+                    {/* Circle Icon - Overlapping the header */}
+                    <div className="absolute -bottom-8 left-6">
+                      <div className="bg-white p-1.5 rounded-xl shadow-md">
+                        <div className="h-16 w-16 bg-indigo-100 rounded-xl flex items-center justify-center text-2xl overflow-hidden font-bold text-indigo-500">
+                          {circle.iconImage ? (
+                            <img src={circle.iconImage} alt={circle.name} className="w-full h-full object-cover" />
+                          ) : (
+                            circle.name[0]
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="p-6 flex-1 flex flex-col">
+                  <div className="p-6 pt-10 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mb-2">
                       <h3
                         onClick={() => btn.text === "Joined" && handleEnter(circle._id)}

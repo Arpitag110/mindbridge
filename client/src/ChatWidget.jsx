@@ -12,6 +12,7 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose, onMessageSent })
   // Profile modal state
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileEntries, setProfileEntries] = useState({ moods: [], journals: [] });
+  const [profileUser, setProfileUser] = useState(null);
   const { showToast } = useUI();
 
   // 1. Load Chat History on Open
@@ -136,8 +137,12 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose, onMessageSent })
         <div className="flex items-center gap-2">
           <button onClick={async () => {
             try {
-              const res = await axios.get(`http://localhost:5000/api/users/${targetUser._id}/visible-entries?viewerId=${currentUser._id}`);
-              setProfileEntries(res.data);
+              const [entriesRes, userRes] = await Promise.all([
+                axios.get(`http://localhost:5000/api/users/${targetUser._id}/visible-entries?viewerId=${currentUser._id}`),
+                axios.get(`http://localhost:5000/api/users/${targetUser._id}`)
+              ]);
+              setProfileEntries(entriesRes.data);
+              setProfileUser({ ...targetUser, bio: userRes.data.bio || "", interests: userRes.data.interests || [] });
               setShowProfileModal(true);
             } catch (err) { console.error('Failed to load profile entries', err); showToast('Failed to load entries', 'error'); }
           }} className="bg-indigo-500 hover:bg-indigo-400 px-3 py-1 rounded text-white text-xs">View</button>
@@ -199,35 +204,88 @@ const ChatWidget = ({ socket, currentUser, targetUser, onClose, onMessageSent })
       </form>
 
       {/* Profile Entries Modal */}
-      {showProfileModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 p-4">
+      {showProfileModal && profileUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-[100] p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-auto max-h-[80vh]">
-            <div className="p-4 border-b flex justify-between items-center">
-              <div className="flex items-center gap-3"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${targetUser.username}`} className="w-10 h-10 rounded-full" /><div><div className="font-bold">{targetUser.username}</div><div className="text-xs text-gray-500">Profile</div></div></div>
-              <button onClick={() => setShowProfileModal(false)} className="text-gray-500">Close</button>
-            </div>
-            <div className="p-4 space-y-4">
-              <h3 className="font-bold">Recent Moods</h3>
-              {profileEntries.moods.length === 0 ? <div className="text-sm text-gray-400">No visible moods</div> : (
-                profileEntries.moods.map(m => (
-                  <div key={m._id} className="p-3 bg-gray-50 rounded-lg border">
-                    <div className="text-sm font-bold">Mood: {m.score}</div>
-                    {m.note && <div className="text-xs text-gray-600 mt-1">{m.note}</div>}
-                    <div className="text-xs text-gray-400 mt-2">{new Date(m.createdAt).toLocaleString()}</div>
+            <div className="p-6 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-4">
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profileUser.username}`} className="w-16 h-16 rounded-full border-2 border-white shadow-md" />
+                  <div>
+                    <div className="font-bold text-xl text-gray-800">{profileUser.username}</div>
+                    <div className="text-sm text-gray-500">Profile</div>
                   </div>
-                ))
+                </div>
+                <button onClick={() => setShowProfileModal(false)} className="text-gray-500 hover:text-gray-700 p-1">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Bio Section */}
+              {profileUser.bio && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Bio</h3>
+                  <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    {profileUser.bio}
+                  </p>
+                </div>
               )}
 
-              <h3 className="font-bold">Recent Journals</h3>
-              {profileEntries.journals.length === 0 ? <div className="text-sm text-gray-400">No visible journals</div> : (
-                profileEntries.journals.map(j => (
-                  <div key={j._id} className="p-3 bg-gray-50 rounded-lg border">
-                    <div className="font-bold">{j.title}</div>
-                    <div className="text-xs text-gray-600 mt-1">{j.content.slice(0, 200)}{j.content.length > 200 ? '...' : ''}</div>
-                    <div className="text-xs text-gray-400 mt-2">{new Date(j.createdAt).toLocaleString()}</div>
+              {/* Interests Section */}
+              {profileUser.interests && profileUser.interests.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Interests</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {profileUser.interests.map((interest, index) => (
+                      <span key={index} className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full text-sm font-medium">
+                        {interest}
+                      </span>
+                    ))}
                   </div>
-                ))
+                </div>
               )}
+
+              {/* Recent Moods Section */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Recent Moods</h3>
+                {profileEntries.moods.length === 0 ? (
+                  <div className="text-sm text-gray-400 bg-gray-50 p-4 rounded-lg border border-gray-100 text-center">No visible moods</div>
+                ) : (
+                  profileEntries.moods.map(m => (
+                    <div key={m._id} className="p-4 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-base font-bold text-gray-800">Mood: {m.score}</div>
+                        <div className="text-xs text-gray-400">{new Date(m.createdAt).toLocaleString()}</div>
+                      </div>
+                      {m.note && <div className="text-sm text-gray-600 mt-2 italic">"{m.note}"</div>}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Recent Journals Section */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Recent Journals</h3>
+                {profileEntries.journals.length === 0 ? (
+                  <div className="text-sm text-gray-400 bg-gray-50 p-4 rounded-lg border border-gray-100 text-center">No visible journals</div>
+                ) : (
+                  profileEntries.journals.map(j => (
+                    <div key={j._id} className="p-4 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-bold text-gray-800">{j.title}</div>
+                        <div className="text-xs text-gray-400">{new Date(j.createdAt).toLocaleString()}</div>
+                      </div>
+                      <div className="text-sm text-gray-600 mt-2 line-clamp-3">{j.content}</div>
+                      {j.visibility && (
+                        <div className="text-xs text-indigo-600 mt-2 font-medium">
+                          Visibility: {j.visibility}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>

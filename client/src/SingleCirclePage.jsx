@@ -45,7 +45,9 @@ const SingleCirclePage = () => {
   // ADMIN STATE
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminTab, setAdminTab] = useState("overview"); // overview, requests, reports, members, settings
-  const [editFormData, setEditFormData] = useState({ name: "", description: "", coverImage: "" });
+  const [editFormData, setEditFormData] = useState({ name: "", description: "", coverImage: "", iconImage: "" });
+  const [isDragging, setIsDragging] = useState(false);
+  const [iconPreview, setIconPreview] = useState(null);
 
   // Member modal state
   const [showMemberModal, setShowMemberModal] = useState(false);
@@ -66,8 +68,10 @@ const SingleCirclePage = () => {
       setEditFormData({
         name: circleRes.data.name,
         description: circleRes.data.description,
-        coverImage: circleRes.data.coverImage || ""
+        coverImage: circleRes.data.coverImage || "",
+        iconImage: circleRes.data.iconImage || ""
       });
+      setIconPreview(circleRes.data.iconImage || null);
 
       const postsRes = await axios.get(`http://localhost:5000/api/posts/${id}`);
       setPosts(postsRes.data);
@@ -178,6 +182,25 @@ const SingleCirclePage = () => {
     } catch (err) { console.error(err); }
   };
 
+  // Handle image upload
+  const handleImageUpload = (file) => {
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Image size must be less than 5MB", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result;
+      setIconPreview(base64String);
+      setEditFormData({ ...editFormData, iconImage: base64String });
+    };
+    reader.onerror = () => {
+      showToast("Failed to read image", "error");
+    };
+    reader.readAsDataURL(file);
+  };
+
   // 4. Update Circle Settings
   const handleUpdateCircle = async (e) => {
     e.preventDefault();
@@ -185,7 +208,32 @@ const SingleCirclePage = () => {
       await axios.put(`http://localhost:5000/api/circles/${id}`, { userId: currentUser._id, updates: editFormData });
       setShowAdminModal(false);
       fetchCircleData();
+      showToast("Circle updated successfully", "success");
     } catch (err) { showToast("Failed update", "error"); }
+  };
+
+  // 5. Delete Circle
+  const handleDeleteCircle = async () => {
+    const confirmed = await showConfirm(
+      "Are you sure you want to delete this circle? This action cannot be undone. All posts, questions, and member data will be permanently deleted.",
+      "Delete Circle"
+    );
+    if (!confirmed) return;
+
+    try {
+      await axios.delete(`http://localhost:5000/api/circles/${id}`, {
+        data: { adminId: currentUser._id }
+      });
+      showToast("Circle deleted successfully", "success");
+      setShowAdminModal(false);
+      // Navigate to circles page after deletion
+      setTimeout(() => {
+        navigate("/circles");
+      }, 1000);
+    } catch (err) {
+      console.error("Error deleting circle:", err);
+      showToast(err.response?.data?.message || "Failed to delete circle", "error");
+    }
   };
 
   // User Actions
@@ -326,7 +374,11 @@ const SingleCirclePage = () => {
           <div>
             <div className="bg-white p-2 rounded-2xl shadow-md inline-block">
               <div className="h-24 w-24 bg-indigo-100 rounded-xl flex items-center justify-center text-4xl overflow-hidden font-bold text-indigo-500">
-                {circle.name[0]}
+                {circle.iconImage ? (
+                  <img src={circle.iconImage} alt={circle.name} className="w-full h-full object-cover" />
+                ) : (
+                  circle.name[0]
+                )}
               </div>
             </div>
             <h1 className="text-3xl font-bold mt-2 text-gray-800">{circle.name}</h1>
@@ -558,16 +610,24 @@ const SingleCirclePage = () => {
               {circle.members.map(member => (
                 <div key={member._id} className="flex items-center gap-3">
                   <img src={getAvatar(member.avatar)} className="w-8 h-8 rounded-full bg-gray-50" />
-                  <div>
-                    <p onClick={async () => {
-                      // fetch visible entries for this member within the circle context
-                      try {
-                        const res = await axios.get(`http://localhost:5000/api/users/${member._id}/visible-entries?viewerId=${currentUser?._id}&circleId=${id}`);
-                        setSelectedMember({ ...member });
-                        setSelectedMemberEntries(res.data);
-                        setShowMemberModal(true);
-                      } catch (err) { console.error('Failed to load member entries', err); showToast('Failed to load entries', 'error'); }
-                    }} className="text-sm font-bold text-gray-700 cursor-pointer hover:underline">{member.username}</p>
+                  <div className="flex-1">
+                    <button
+                      onClick={async () => {
+                        // fetch visible entries for this member within the circle context
+                        try {
+                          const [entriesRes, userRes] = await Promise.all([
+                            axios.get(`http://localhost:5000/api/users/${member._id}/visible-entries?viewerId=${currentUser?._id}&circleId=${id}`),
+                            axios.get(`http://localhost:5000/api/users/${member._id}`)
+                          ]);
+                          setSelectedMember({ ...member, bio: userRes.data.bio || "", interests: userRes.data.interests || [] });
+                          setSelectedMemberEntries(entriesRes.data);
+                          setShowMemberModal(true);
+                        } catch (err) { console.error('Failed to load member entries', err); showToast('Failed to load entries', 'error'); }
+                      }}
+                      className="text-sm font-bold text-gray-700 cursor-pointer hover:underline text-left"
+                    >
+                      {member.username}
+                    </button>
                     {circle.admins.some(a => a._id === member._id) && <span className="text-[10px] uppercase font-bold text-indigo-500">Admin</span>}
                   </div>
                 </div>
@@ -601,21 +661,107 @@ const SingleCirclePage = () => {
 
               {/* TAB: SETTINGS */}
               {adminTab === 'settings' && (
-                <form onSubmit={handleUpdateCircle} className="space-y-4 max-w-md mx-auto mt-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Circle Name</label>
-                    <input className="w-full border p-3 rounded-xl focus:ring-2 ring-indigo-200 outline-none" placeholder="Name" value={editFormData.name} onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} />
+                <div className="space-y-6">
+                  <form onSubmit={handleUpdateCircle} className="space-y-4 max-w-md mx-auto">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Circle Name</label>
+                      <input className="w-full border p-3 rounded-xl focus:ring-2 ring-indigo-200 outline-none" placeholder="Name" value={editFormData.name} onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Description</label>
+                      <textarea className="w-full border p-3 rounded-xl focus:ring-2 ring-indigo-200 outline-none h-32 resize-none" placeholder="Description" value={editFormData.description} onChange={e => setEditFormData({ ...editFormData, description: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Circle Icon</label>
+                      <div
+                        className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+                          isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-indigo-300'
+                        }`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsDragging(true);
+                        }}
+                        onDragLeave={() => setIsDragging(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsDragging(false);
+                          const file = e.dataTransfer.files[0];
+                          if (file && file.type.startsWith('image/')) {
+                            handleImageUpload(file);
+                          }
+                        }}
+                      >
+                        {iconPreview ? (
+                          <div className="space-y-3">
+                            <img src={iconPreview} alt="Circle icon" className="w-24 h-24 mx-auto rounded-xl object-cover border-2 border-gray-200" />
+                            <div className="flex gap-2 justify-center">
+                              <label className="cursor-pointer bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition">
+                                Change Image
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files[0];
+                                    if (file) handleImageUpload(file);
+                                  }}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIconPreview(null);
+                                  setEditFormData({ ...editFormData, iconImage: "" });
+                                }}
+                                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="text-gray-400">
+                              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <label className="cursor-pointer text-indigo-600 font-medium hover:text-indigo-700">
+                                Click to upload
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files[0];
+                                    if (file) handleImageUpload(file);
+                                  }}
+                                />
+                              </label>
+                              <span className="text-gray-500"> or drag and drop</span>
+                            </div>
+                            <p className="text-xs text-gray-400">PNG, JPG, GIF up to 5MB</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <button className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition">Save Changes</button>
+                  </form>
+
+                  {/* Delete Circle Section */}
+                  <div className="max-w-md mx-auto pt-6 border-t border-gray-200">
+                    <h3 className="text-sm font-bold text-gray-700 mb-2">Danger Zone</h3>
+                    <p className="text-xs text-gray-500 mb-4">Once you delete a circle, there is no going back. Please be certain.</p>
+                    <button
+                      onClick={handleDeleteCircle}
+                      className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition flex items-center justify-center gap-2"
+                    >
+                      <Trash2 size={18} />
+                      Delete Circle
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Description</label>
-                    <textarea className="w-full border p-3 rounded-xl focus:ring-2 ring-indigo-200 outline-none h-32 resize-none" placeholder="Description" value={editFormData.description} onChange={e => setEditFormData({ ...editFormData, description: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cover Image URL</label>
-                    <input className="w-full border p-3 rounded-xl focus:ring-2 ring-indigo-200 outline-none" placeholder="https://..." value={editFormData.coverImage} onChange={e => setEditFormData({ ...editFormData, coverImage: e.target.value })} />
-                  </div>
-                  <button className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition">Save Changes</button>
-                </form>
+                </div>
               )}
 
               {/* TAB: REQUESTS */}
@@ -676,13 +822,27 @@ const SingleCirclePage = () => {
                   <input type="text" placeholder="Search members..." className="w-full border p-2 rounded-lg mb-4 text-sm" />
                   {circle.members.map(member => (
                     <div key={member._id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-200 transition">
-                      <div className="flex items-center gap-3">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await axios.get(`http://localhost:5000/api/users/${member._id}/visible-entries?viewerId=${currentUser?._id}&circleId=${id}`);
+                            const userRes = await axios.get(`http://localhost:5000/api/users/${member._id}`);
+                            setSelectedMember({ ...member, bio: userRes.data.bio || "", interests: userRes.data.interests || [] });
+                            setSelectedMemberEntries(res.data);
+                            setShowMemberModal(true);
+                          } catch (err) { 
+                            console.error('Failed to load member entries', err); 
+                            showToast('Failed to load entries', 'error'); 
+                          }
+                        }}
+                        className="flex items-center gap-3 flex-1 text-left hover:opacity-80 transition-opacity"
+                      >
                         <img src={getAvatar(member.avatar)} className="w-10 h-10 rounded-full bg-gray-100" />
                         <div>
                           <p className="font-bold text-gray-800">{member.username}</p>
                           {circle.admins.some(a => a._id === member._id) ? <span className="text-xs text-indigo-600 font-bold">Admin</span> : <span className="text-xs text-gray-500">Member</span>}
                         </div>
-                      </div>
+                      </button>
                       {/* Don't show delete button for self or other admins if you aren't owner (simplified logic here: admins can kick non-admins) */}
                       {!circle.admins.some(a => a._id === member._id) && (
                         <button onClick={() => handleRemoveMember(member._id)} className="text-gray-400 hover:text-red-500 p-2" title="Remove Member"><Trash2 size={18} /></button>
@@ -699,32 +859,85 @@ const SingleCirclePage = () => {
       {showMemberModal && selectedMember && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-auto max-h-[80vh]">
-            <div className="p-4 border-b flex justify-between items-center">
-              <div className="flex items-center gap-3"><img src={getAvatar(selectedMember.avatar)} className="w-10 h-10 rounded-full" /><div><div className="font-bold">{selectedMember.username}</div><div className="text-xs text-gray-500">Member</div></div></div>
-              <button onClick={() => setShowMemberModal(false)} className="text-gray-500">Close</button>
-            </div>
-            <div className="p-4 space-y-4">
-              <h3 className="font-bold">Recent Moods</h3>
-              {selectedMemberEntries.moods.length === 0 ? <div className="text-sm text-gray-400">No visible moods</div> : (
-                selectedMemberEntries.moods.map(m => (
-                  <div key={m._id} className="p-3 bg-gray-50 rounded-lg border">
-                    <div className="text-sm font-bold">Mood: {m.score}</div>
-                    {m.note && <div className="text-xs text-gray-600 mt-1">{m.note}</div>}
-                    <div className="text-xs text-gray-400 mt-2">{new Date(m.createdAt).toLocaleString()}</div>
+            <div className="p-6 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-4">
+                  <img src={getAvatar(selectedMember.avatar)} className="w-16 h-16 rounded-full border-2 border-white shadow-md" />
+                  <div>
+                    <div className="font-bold text-xl text-gray-800">{selectedMember.username}</div>
+                    <div className="text-sm text-gray-500">Member</div>
                   </div>
-                ))
+                </div>
+                <button onClick={() => setShowMemberModal(false)} className="text-gray-500 hover:text-gray-700 p-1">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Bio Section */}
+              {selectedMember.bio && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Bio</h3>
+                  <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    {selectedMember.bio}
+                  </p>
+                </div>
               )}
 
-              <h3 className="font-bold">Recent Journals</h3>
-              {selectedMemberEntries.journals.length === 0 ? <div className="text-sm text-gray-400">No visible journals</div> : (
-                selectedMemberEntries.journals.map(j => (
-                  <div key={j._id} className="p-3 bg-gray-50 rounded-lg border">
-                    <div className="font-bold">{j.title}</div>
-                    <div className="text-xs text-gray-600 mt-1">{j.content.slice(0, 200)}{j.content.length > 200 ? '...' : ''}</div>
-                    <div className="text-xs text-gray-400 mt-2">{new Date(j.createdAt).toLocaleString()}</div>
+              {/* Interests Section */}
+              {selectedMember.interests && selectedMember.interests.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Interests</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedMember.interests.map((interest, index) => (
+                      <span key={index} className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full text-sm font-medium">
+                        {interest}
+                      </span>
+                    ))}
                   </div>
-                ))
+                </div>
               )}
+
+              {/* Recent Moods Section */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Recent Moods</h3>
+                {selectedMemberEntries.moods.length === 0 ? (
+                  <div className="text-sm text-gray-400 bg-gray-50 p-4 rounded-lg border border-gray-100 text-center">No visible moods</div>
+                ) : (
+                  selectedMemberEntries.moods.map(m => (
+                    <div key={m._id} className="p-4 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-base font-bold text-gray-800">Mood: {m.score}</div>
+                        <div className="text-xs text-gray-400">{new Date(m.createdAt).toLocaleString()}</div>
+                      </div>
+                      {m.note && <div className="text-sm text-gray-600 mt-2 italic">"{m.note}"</div>}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Recent Journals Section */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Recent Journals</h3>
+                {selectedMemberEntries.journals.length === 0 ? (
+                  <div className="text-sm text-gray-400 bg-gray-50 p-4 rounded-lg border border-gray-100 text-center">No visible journals</div>
+                ) : (
+                  selectedMemberEntries.journals.map(j => (
+                    <div key={j._id} className="p-4 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-bold text-gray-800">{j.title}</div>
+                        <div className="text-xs text-gray-400">{new Date(j.createdAt).toLocaleString()}</div>
+                      </div>
+                      <div className="text-sm text-gray-600 mt-2 line-clamp-3">{j.content}</div>
+                      {j.visibility && (
+                        <div className="text-xs text-indigo-600 mt-2 font-medium">
+                          Visibility: {j.visibility}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
