@@ -24,7 +24,7 @@ const MoodSchema = new mongoose.Schema(
     // NEW FIELD
     visibility: {
       type: String,
-      enum: ["Private", "Circles", "Public"], // Only these 3 allowed
+      enum: ["Private", "Circles", "Public"], 
       default: "Private",
     },
   },

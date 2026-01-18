@@ -124,7 +124,7 @@ class UserController {
   async deleteUser(req, res) {
     try {
       const { password } = req.body;
-      
+
       if (!password) {
         return res.status(400).json({ message: "Password is required to delete account" });
       }
@@ -145,7 +145,7 @@ class UserController {
       await User.findByIdAndDelete(req.params.id);
       await Mood.deleteMany({ userId: req.params.id });
       await Journal.deleteMany({ userId: req.params.id });
-      
+
       res.status(200).json({ message: "Account has been deleted" });
     } catch (err) {
       return res.status(500).json({ message: "Failed to delete account", error: err.message });
@@ -154,4 +154,3 @@ class UserController {
 }
 
 module.exports = new UserController();
-

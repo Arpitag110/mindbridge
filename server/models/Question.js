@@ -6,12 +6,12 @@ const QuestionSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     title: { type: String, required: true },
     body: { type: String, required: true },
-    upvotes: { type: Array, default: [] }, // Users who upvoted the question
+    upvotes: { type: Array, default: [] }, 
     answers: [
       {
         userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         text: { type: String, required: true },
-        upvotes: { type: Array, default: [] }, // Users who upvoted this answer
+        upvotes: { type: Array, default: [] }, 
         createdAt: { type: Date, default: Date.now }
       }
     ]

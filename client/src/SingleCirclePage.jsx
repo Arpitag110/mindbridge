@@ -156,9 +156,9 @@ const SingleCirclePage = () => {
       await axios.put(`http://localhost:5000/api/circles/${id}/kick`, { memberId: targetUserId, adminId: currentUser._id });
       fetchCircleData();
       showToast("Member removed successfully", "success");
-    } catch (err) { 
-      console.error(err); 
-      showToast(err.response?.data || "Failed to remove member", "error"); 
+    } catch (err) {
+      console.error(err);
+      showToast(err.response?.data || "Failed to remove member", "error");
     }
   };
 
@@ -674,9 +674,8 @@ const SingleCirclePage = () => {
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Circle Icon</label>
                       <div
-                        className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
-                          isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-indigo-300'
-                        }`}
+                        className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-indigo-300'
+                          }`}
                         onDragOver={(e) => {
                           e.preventDefault();
                           setIsDragging(true);
@@ -830,9 +829,9 @@ const SingleCirclePage = () => {
                             setSelectedMember({ ...member, bio: userRes.data.bio || "", interests: userRes.data.interests || [] });
                             setSelectedMemberEntries(res.data);
                             setShowMemberModal(true);
-                          } catch (err) { 
-                            console.error('Failed to load member entries', err); 
-                            showToast('Failed to load entries', 'error'); 
+                          } catch (err) {
+                            console.error('Failed to load member entries', err);
+                            showToast('Failed to load entries', 'error');
                           }
                         }}
                         className="flex items-center gap-3 flex-1 text-left hover:opacity-80 transition-opacity"

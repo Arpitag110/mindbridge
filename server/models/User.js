@@ -7,7 +7,7 @@ const UserSchema = new mongoose.Schema(
       require: true,
       min: 3,
       max: 20,
-      unique: true, // username must be unique
+      unique: true, 
     },
     email: {
       type: String,
@@ -27,13 +27,12 @@ const UserSchema = new mongoose.Schema(
     bio: {
       type: String,
       default: "",
-      max: 500, // Good practice to limit bio length
+      max: 500, 
     },
     mantra: {
       type: String,
       default: "One day at a time",
     },
-    // 👇 ADD THESE NEW FIELDS 👇
     interests: {
       type: Array,
       default: [],

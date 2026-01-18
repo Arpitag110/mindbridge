@@ -12,7 +12,6 @@ import { SocketProvider } from "./SocketContext";
 
 function App() {
   return (
-    // 3. Wrap everything in SocketProvider
     <SocketProvider>
       <Router>
         <Routes>
@@ -24,8 +23,6 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/circles" element={<CirclesPage />} />
           <Route path="/circles/:id" element={<SingleCirclePage />} />
-          
-          {/* 4. Add the Dashboard Route */}
           <Route path="/dashboard" element={<DashboardPage />} />
         </Routes>
       </Router>

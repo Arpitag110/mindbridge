@@ -19,7 +19,6 @@ const JournalSchema = new mongoose.Schema(
       type: String, 
       default: "Neutral"
     },
-    // NEW FIELD 👇
     visibility: {
       type: String,
       enum: ["Private", "Circles", "Public"], 

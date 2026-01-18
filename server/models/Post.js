@@ -17,16 +17,14 @@ const PostSchema = new mongoose.Schema(
       required: true,
       maxlength: 1000,
     },
-    // For anonymity feature later
     isAnonymous: {
       type: Boolean,
       default: false,
     },
     likes: {
-      type: [String], // Array of User IDs who liked
+      type: [String], 
       default: [],
     },
-    // Simple comment structure for now
     comments: [
       {
         userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

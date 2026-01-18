@@ -19,21 +19,18 @@ const CircleSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    // Admin array allows multiple admins later
     admins: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
-    // Members who have joined
     members: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
-    // For Private circles: people waiting to get in
     pendingMembers: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -49,17 +46,14 @@ const CircleSchema = new mongoose.Schema(
       enum: ["public", "private"],
       default: "public",
     },
-    // To support your Anonymous Posting feature later
     allowsAnonymous: {
       type: Boolean,
       default: false,
     },
-    // Optional cover image (we can use a placeholder or URL)
     coverImage: {
       type: String,
       default: "", 
     },
-    // Circle icon/avatar image (base64 or URL)
     iconImage: {
       type: String,
       default: "",

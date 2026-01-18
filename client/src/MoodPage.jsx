@@ -119,9 +119,6 @@ const MoodPage = () => {
       });
 
       await fetchHistory(user._id || user.id);
-
-      // Only show wisdom if creating new, or if updating to a different mood score? 
-      // Let's show it always for positive reinforcement.
       setWisdomMessage(wisdomQuotes[moodScore]);
       setShowWisdom(true);
 
@@ -340,9 +337,6 @@ const MoodPage = () => {
         )}
 
       </div>
-
-      {/* SMART WISDOM MODAL (Keep Existing) */}
-      {/* --- 7. SMART WISDOM MODAL (UPDATED) --- */}
       {showWisdom && wisdomMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center animate-bounce-in relative border border-white/50">
